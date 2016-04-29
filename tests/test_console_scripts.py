@@ -3,21 +3,6 @@ from __future__ import print_function
 import pytest
 
 
-@pytest.fixture
-def run_test(testdir):
-    def runner(script, passed=1, skipped=0, failed=0, launch_mode_conf=None):
-        testdir.makepyfile(script)
-        args = []
-        if launch_mode_conf is not None:
-            args.append('--script-launch-mode=' + launch_mode_conf)
-        result = testdir.runpytest(*args)
-        print('\n'.join(['pytest stdout:'] + result.outlines +
-                        ['pytest stderr:'] + result.errlines))
-        result.assert_outcomes(passed=passed, skipped=skipped, failed=failed)
-        return result
-    return runner
-
-
 @pytest.fixture(params=[None, 'inprocess', 'subprocess', 'both'])
 def launch_mode_conf(request):
     return request.param
@@ -33,6 +18,21 @@ def launch_modes(launch_mode_conf):
         return {'inprocess'}  # Default value.
 
 
+@pytest.fixture
+def run_test(testdir):
+    def runner(script, passed=1, skipped=0, failed=0, launch_mode_conf=None):
+        testdir.makepyfile(script)
+        args = []
+        if launch_mode_conf is not None:
+            args.append('--script-launch-mode=' + launch_mode_conf)
+        result = testdir.runpytest(*args)
+        print('\n'.join(['pytest stdout:'] + result.outlines +
+                        ['pytest stderr:'] + result.errlines))
+        result.assert_outcomes(passed=passed, skipped=skipped, failed=failed)
+        return result
+    return runner
+
+
 CHECK_LAUNCH_MODE = """
 def test_launch_mode(script_runner):
     assert script_runner.launch_mode in {}
@@ -40,7 +40,6 @@ def test_launch_mode(script_runner):
 
 
 def test_command_line_option(run_test, launch_mode_conf, launch_modes):
-    """Make sure that script launch mode is set from command line."""
     run_test(
         CHECK_LAUNCH_MODE.format(launch_modes),
         passed=len(launch_modes),
@@ -58,6 +57,29 @@ def test_config_option(run_test, testdir, launch_mode_conf, launch_modes):
     run_test(
         CHECK_LAUNCH_MODE.format(launch_modes),
         passed=len(launch_modes)
+    )
+
+
+def test_override_launch_mode_with_mark(run_test, launch_mode_conf):
+    run_test(
+        """
+import pytest
+
+@pytest.mark.script_launch_mode('inprocess')
+def test_inprocess(script_runner):
+    assert script_runner.launch_mode == 'inprocess'
+
+@pytest.mark.script_launch_mode('subprocess')
+def test_subprocess(script_runner):
+    assert script_runner.launch_mode == 'subprocess'
+
+@pytest.mark.script_launch_mode('both')
+def test_both(script_runner, accumulator=set()):
+    assert script_runner.launch_mode not in accumulator
+    accumulator.add(script_runner.launch_mode)
+        """,
+        passed=4,
+        launch_mode_conf=launch_mode_conf
     )
 
 
