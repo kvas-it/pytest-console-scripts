@@ -161,6 +161,7 @@ from __future__ import print_function
 
 def main():
     print(u'hello world')
+    print('hello world')
         """
     )
     run_test(
@@ -169,7 +170,7 @@ def test_hello_world(script_runner):
     ret = script_runner.run('{}')
     print(ret.stderr)
     assert ret.success
-    assert ret.stdout == u'hello world\n'
+    assert ret.stdout == u'hello world\nhello world\n'
         """.format(console_script.command_name),
         launch_mode_conf=launch_mode,
         passed=1
@@ -192,6 +193,34 @@ def test_exit_boom(script_runner):
     assert not ret.success
     assert ret.stdout == ''
     assert ret.stderr == 'boom\n'
+        """.format(console_script.command_name),
+        launch_mode_conf=launch_mode,
+        passed=1
+    )
+
+
+def test_run_script_with_exception(console_script, run_test, launch_mode):
+    console_script.write(
+        """
+import sys
+
+def main():
+    raise TypeError('boom')
+        """
+    )
+    run_test(
+        r"""
+def test_throw_exception(script_runner):
+    ret = script_runner.run('{}')
+    assert not ret.success
+    assert ret.returncode == 1
+    assert ret.stdout == ''
+    err_lines = ret.stderr.split('\n')
+    print(err_lines)
+    assert len(err_lines) == 7
+    assert err_lines[0] == 'Traceback (most recent call last):'
+    assert 'console-script-module-cmd' in err_lines[1]
+    assert err_lines[5] == 'TypeError: boom'
         """.format(console_script.command_name),
         launch_mode_conf=launch_mode,
         passed=1

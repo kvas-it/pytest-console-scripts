@@ -3,10 +3,20 @@ from __future__ import unicode_literals
 import io
 import subprocess
 import sys
+import traceback
 
 import mock
 import py.path
 import pytest
+
+if sys.version_info.major == 2:
+    # We can't use io.StringIO for mocking stdout/stderr in Python 2
+    # because printing byte strings to it triggers unicode errors and
+    # there's code in stdlib that does that (e.g. traceback module).
+    import StringIO
+    StreamMock = StringIO.StringIO
+else:
+    StreamMock = io.StringIO
 
 
 def pytest_addoption(parser):
@@ -89,15 +99,16 @@ class ScriptRunner(object):
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
         script = py.path.local(sys.executable).join('..', command)
-        stdout = io.StringIO()
-        stderr = io.StringIO()
+        stdout = StreamMock()
+        stderr = StreamMock()
         returncode = 0
         stdout_patch = mock.patch('sys.stdout', new=stdout)
         stderr_patch = mock.patch('sys.stderr', new=stderr)
         argv_patch = mock.patch('sys.argv', new=cmdargs)
         with stdout_patch, stderr_patch, argv_patch:
             try:
-                exec(script.read(), {'__name__': '__main__'})
+                compiled = compile(script.read(), str(script), 'exec', flags=0)
+                exec(compiled, {'__name__': '__main__'})
             except SystemExit as exc:
                 returncode = exc.code
                 if isinstance(returncode, str):
@@ -105,6 +116,14 @@ class ScriptRunner(object):
                     returncode = 1
                 elif returncode is None:
                     returncode = 0
+            except Exception as exc:
+                returncode = 1
+                try:
+                    et, ev, tb = sys.exc_info()
+                    # Hide current frame from the stack trace.
+                    traceback.print_exception(et, ev, tb.tb_next)
+                finally:
+                    del tb
         return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
 
     def run_subprocess(self, command, *arguments, **options):
