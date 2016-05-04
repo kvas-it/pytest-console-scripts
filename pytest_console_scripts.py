@@ -1,3 +1,11 @@
+from __future__ import unicode_literals
+
+import io
+import subprocess
+import sys
+
+import mock
+import py.path
 import pytest
 
 
@@ -51,6 +59,16 @@ def pytest_generate_tests(metafunc):
         raise ValueError('Invalid script launch mode: {}'.format(mode))
 
 
+class RunResult(object):
+    """Result of running a script."""
+
+    def __init__(self, returncode, stdout, stderr):
+        self.success = returncode == 0
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
 class ScriptRunner(object):
     """Fixture for running python scripts under test."""
 
@@ -58,6 +76,42 @@ class ScriptRunner(object):
         assert launch_mode in {'inprocess', 'subprocess'}
         self.launch_mode = launch_mode
         self.rootdir = rootdir
+
+    def __repr__(self):
+        return "<ScriptRunner {}>".format(self.launch_mode)
+
+    def run(self, command, *arguments, **options):
+        if self.launch_mode == 'inprocess':
+            return self.run_inprocess(command, *arguments, **options)
+        else:
+            return self.run_subprocess(command, *arguments, **options)
+
+    def run_inprocess(self, command, *arguments, **options):
+        cmdargs = [command] + list(arguments)
+        script = py.path.local(sys.executable).join('..', command)
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        returncode = 0
+        stdout_patch = mock.patch('sys.stdout', new=stdout)
+        stderr_patch = mock.patch('sys.stderr', new=stderr)
+        argv_patch = mock.patch('sys.argv', new=cmdargs)
+        with stdout_patch, stderr_patch, argv_patch:
+            try:
+                exec(script.read(), {'__name__': '__main__'})
+            except SystemExit as exc:
+                returncode = exc.code
+                if isinstance(returncode, str):
+                    stderr.write('{}\n'.format(exc))
+                    returncode = 1
+                elif returncode is None:
+                    returncode = 0
+        return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
+
+    def run_subprocess(self, command, *arguments, **options):
+        p = subprocess.Popen([command] + list(arguments),
+                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                             universal_newlines=True)
+        return RunResult(p.wait(), p.stdout.read(), p.stderr.read())
 
 
 @pytest.fixture
@@ -67,7 +121,7 @@ def script_launch_mode(request):
 
 @pytest.fixture
 def script_cwd(tmpdir):
-    return tmpdir.join('script-cwd')
+    return tmpdir.mkdir('script-cwd')
 
 
 @pytest.fixture

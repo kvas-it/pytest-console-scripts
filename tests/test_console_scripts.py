@@ -1,15 +1,25 @@
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 
+import mock
 import pytest
 
 
 @pytest.fixture(params=[None, 'inprocess', 'subprocess', 'both'])
 def launch_mode_conf(request):
+    """Configured launch mode (None|'inprocess'|'subprocess'|'both')."""
     return request.param
 
 
 @pytest.fixture
 def launch_modes(launch_mode_conf):
+    """Set of launch modes in which the tests will actually be run.
+
+    The value of this fixture depends on the value of `launch_mode_conf`:
+    - 'inprocess'  -> {'inprocess'}
+    - 'subprocess' -> {'subprocess'}
+    - 'both'       -> {'inprocess', 'subprocess'}
+    - None         -> {'inprocess'}
+    """
     if launch_mode_conf == 'both':
         return {'inprocess', 'subprocess'}
     elif launch_mode_conf is not None:
@@ -34,8 +44,10 @@ def run_test(testdir):
 
 
 CHECK_LAUNCH_MODE = """
-def test_launch_mode(script_runner):
+def test_both(script_runner, accumulator=set()):
     assert script_runner.launch_mode in {}
+    assert script_runner.launch_mode not in accumulator
+    accumulator.add(script_runner.launch_mode)
 """
 
 
@@ -92,3 +104,95 @@ def test_help_message(testdir):
         'console-scripts:',
         '*--script-launch-mode=*',
     ])
+
+
+def run_setup_py(cmd, script_path, uninstall=False):
+    """Run setup.py to install or uninstall the script command line wrapper."""
+    script_dir = script_path.join('..')
+    script_name = script_path.purebasename
+    setup_py = script_dir.join('setup.py')
+    setup_py.write(
+        """
+import setuptools
+
+setuptools.setup(
+    name=script_name,
+    version='0.1',
+    py_modules=[script_name],
+    zip_safe=False,
+    entry_points={{
+        'console_scripts': ['{}={}:main']
+    }}
+)
+        """.format(cmd, script_name))
+    args = ['setup.py', 'develop']
+    if uninstall:
+        args.append('--uninstall')
+    with script_dir.as_cwd(), mock.patch('sys.argv', args):
+        exec(setup_py.read())
+
+
+@pytest.yield_fixture
+def console_script(request, testdir):
+    """Console script exposed as a wrapper in python `bin` directory.
+
+    Returned value is a `py.path.local` object that corresponds to a python
+    file whose `main` function is exposed via console script wrapper. The
+    name of the command is available via it `command_name` attribute.
+    """
+    script = testdir.makepyfile(console_script_module='def main(): pass')
+    cmd = 'console-script-module-cmd'
+    run_setup_py(cmd, script)
+    script.command_name = cmd
+    yield script
+    run_setup_py(cmd, script, uninstall=True)
+
+
+@pytest.fixture(params=['inprocess', 'subprocess'])
+def launch_mode(request):
+    """Launch mode: inprocess|subprocess."""
+    return request.param
+
+
+def test_run_script(console_script, run_test, launch_mode):
+    console_script.write(
+        """
+from __future__ import print_function
+
+def main():
+    print(u'hello world')
+        """
+    )
+    run_test(
+        r"""
+def test_hello_world(script_runner):
+    ret = script_runner.run('{}')
+    print(ret.stderr)
+    assert ret.success
+    assert ret.stdout == u'hello world\n'
+        """.format(console_script.command_name),
+        launch_mode_conf=launch_mode,
+        passed=1
+    )
+
+
+def test_run_failing_script(console_script, run_test, launch_mode):
+    console_script.write(
+        """
+import sys
+
+def main():
+    sys.exit('boom')
+        """
+    )
+    run_test(
+        r"""
+def test_exit_boom(script_runner):
+    ret = script_runner.run('{}')
+    assert not ret.success
+    assert ret.stdout == ''
+    assert ret.stderr == 'boom\n'
+        """.format(console_script.command_name),
+        launch_mode_conf=launch_mode,
+        passed=1
+    )
