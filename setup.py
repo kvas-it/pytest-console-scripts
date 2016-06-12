@@ -22,7 +22,7 @@ setup(
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=2.9.1', 'mock>=2.0.0'],
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 3 - Alpha',
         'Framework :: Pytest',
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Testing',
