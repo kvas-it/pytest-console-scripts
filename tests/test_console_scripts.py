@@ -22,10 +22,9 @@ def launch_modes(launch_mode_conf):
     """
     if launch_mode_conf == 'both':
         return {'inprocess', 'subprocess'}
-    elif launch_mode_conf is not None:
+    if launch_mode_conf is not None:
         return {launch_mode_conf}
-    else:
-        return {'inprocess'}  # Default value.
+    return {'inprocess'}
 
 
 @pytest.fixture
@@ -170,7 +169,7 @@ def test_hello_world(script_runner):
     ret = script_runner.run('{}')
     print(ret.stderr)
     assert ret.success
-    assert ret.stdout == u'hello world\nhello world\n'
+    assert ret.stdout == 'hello world\nhello world\n'
         """.format(console_script.command_name),
         launch_mode_conf=launch_mode,
         passed=1

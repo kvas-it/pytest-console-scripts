@@ -5,28 +5,20 @@ pytest-console-scripts
     :target: https://travis-ci.org/kvas-it/pytest-console-scripts
     :alt: See Build Status on Travis CI
 
-.. image:: https://ci.appveyor.com/api/projects/status/github/kvas-it/pytest-console-scripts?branch=master
-    :target: https://ci.appveyor.com/project/kvas-it/pytest-console-scripts/branch/master
-    :alt: See Build Status on AppVeyor
-
-Pytest plugin for testing console scripts.
-
-----
-
-This `Pytest`_ plugin was generated with `Cookiecutter`_ along with
-`@hackebrot`_'s `Cookiecutter-pytest-plugin`_ template.
-
-
-Features
---------
-
-* TODO
+Pytest-console-scripts is a `Pytest`_ plugin for testing python scripts
+installed via ``console_scripts`` entry point of ``setup.py``. It can run the
+scripts under test in a separate process or using the interpreter that's
+running the test suite.  The former mode ensures that the script will run in an
+environment that is identical to normal execution whereas the latter one allows
+much quicker test runs during development while simulating the real runs as
+much as possible.
 
 
 Requirements
 ------------
 
-* TODO
+* Python 2.7 or 3.5, or PyPy,
+* Pytest 2.9.1 or newer.
 
 
 Installation
@@ -40,12 +32,63 @@ You can install "pytest-console-scripts" via `pip`_ from `PyPI`_::
 Usage
 -----
 
-* TODO
+Imagine we have a python package ``foo`` with the following ``setup.py``::
+
+    setup(
+        name='foo',
+        version='0.0.1',
+        py_modules=['foo'],
+        entry_points={
+            'console_scripts': ['foobar=foo:bar']
+        },
+    )
+
+We could use pytest-console-scripts to test the ``foobar`` script::
+
+    def test_foobar(script_runner):
+        ret = script_runner.run('foobar')
+        assert ret.success
+        assert ret.stdout == 'foobar\n'
+        assert ret.stderr == ''
+
+This would use the ``script_runner`` fixture provided by the plugin to
+run the script and capture it's output.
+
+Configuring script execution mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In the example above the ``foobar`` script would run in in-process mode. This
+is fast and good for quick iteration during development. After we're happy with
+the functionality, it's time to run the script in subprocess mode to simulate
+real invocation more closely. There are several ways to do this. We can
+configure it via pytest configuration (for example in ``tox.ini``)::
+
+     [pytest]
+     script_launch_mode = subprocess
+
+We can give a command line option to pytest (this will override the
+configuration file)::
+
+    $ py.test --script-launch-mode=subprocess test_foobar.py
+
+We can also mark individual tests to run in a specific mode::
+
+    @pytest.mark.script_launch_mode('subprocess')
+    def test_foobar(script_runner):
+        ...
+
+Between these three methods the marking of the tests has priority before the
+command line option that in turn overrides the configuration setting. All three
+can take three possible values: "inprocess" (which is the default),
+"subprocess", and "both" (which will cause the test to be run twice: in
+inprocess and in subprocess modes).
+
 
 Contributing
 ------------
 Contributions are very welcome. Tests can be run with `tox`_, please ensure
 the coverage at least stays the same before you submit a pull request.
+
 
 License
 -------
@@ -59,6 +102,12 @@ Issues
 
 If you encounter any problems, please `file an issue`_ along with a detailed
 description.
+
+
+----
+
+Pytest-console-scripts was initially generated with `Cookiecutter`_ along with
+`@hackebrot`_'s `Cookiecutter-pytest-plugin`_ template.
 
 .. _`Cookiecutter`: https://github.com/audreyr/cookiecutter
 .. _`@hackebrot`: https://github.com/hackebrot
