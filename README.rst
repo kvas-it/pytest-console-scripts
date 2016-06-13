@@ -32,7 +32,9 @@ You can install "pytest-console-scripts" via `pip`_ from `PyPI`_::
 Usage
 -----
 
-Imagine we have a python package ``foo`` with the following ``setup.py``::
+Imagine we have a python package ``foo`` with the following ``setup.py``:
+
+.. code-block:: python
 
     setup(
         name='foo',
@@ -43,7 +45,9 @@ Imagine we have a python package ``foo`` with the following ``setup.py``::
         },
     )
 
-We could use pytest-console-scripts to test the ``foobar`` script::
+We could use pytest-console-scripts to test the ``foobar`` script:
+
+.. code-block:: python
 
     def test_foobar(script_runner):
         ret = script_runner.run('foobar')
@@ -71,7 +75,9 @@ configuration file)::
 
     $ py.test --script-launch-mode=subprocess test_foobar.py
 
-We can also mark individual tests to run in a specific mode::
+We can also mark individual tests to run in a specific mode:
+
+.. code-block:: python
 
     @pytest.mark.script_launch_mode('subprocess')
     def test_foobar(script_runner):
