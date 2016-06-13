@@ -65,7 +65,9 @@ In the example above the ``foobar`` script would run in in-process mode. This
 is fast and good for quick iteration during development. After we're happy with
 the functionality, it's time to run the script in subprocess mode to simulate
 real invocation more closely. There are several ways to do this. We can
-configure it via pytest configuration (for example in ``tox.ini``)::
+configure it via pytest configuration (for example in ``tox.ini``):
+
+.. code-block:: ini
 
      [pytest]
      script_launch_mode = subprocess
