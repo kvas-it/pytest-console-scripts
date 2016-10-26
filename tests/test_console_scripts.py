@@ -1,5 +1,7 @@
 from __future__ import print_function, unicode_literals
 
+import subprocess
+
 import mock
 import pytest
 
@@ -115,20 +117,25 @@ def run_setup_py(cmd, script_path, uninstall=False):
 import setuptools
 
 setuptools.setup(
-    name=script_name,
+    name='{script_name}',
     version='0.1',
-    py_modules=[script_name],
+    py_modules=['{script_name}'],
     zip_safe=False,
     entry_points={{
-        'console_scripts': ['{}={}:main']
+        'console_scripts': ['{cmd}={script_name}:main']
     }}
 )
-        """.format(cmd, script_name))
+        """.format(cmd=cmd, script_name=script_name))
     args = ['setup.py', 'develop']
     if uninstall:
         args.append('--uninstall')
-    with script_dir.as_cwd(), mock.patch('sys.argv', args):
-        exec(setup_py.read())
+    try:
+        with script_dir.as_cwd(), mock.patch('sys.argv', args):
+            exec(setup_py.read())
+    except TypeError:
+        # In-process call fails on some Python 2 installations
+        # but it's faster, especially on PyPy.
+        subprocess.check_call(['python'] + args, cwd=str(script_dir))
 
 
 @pytest.yield_fixture
@@ -214,12 +221,7 @@ def test_throw_exception(script_runner):
     assert not ret.success
     assert ret.returncode == 1
     assert ret.stdout == ''
-    err_lines = ret.stderr.split('\n')
-    print(err_lines)
-    assert len(err_lines) == 7
-    assert err_lines[0] == 'Traceback (most recent call last):'
-    assert 'console-script-module-cmd' in err_lines[1]
-    assert err_lines[5] == 'TypeError: boom'
+    assert 'TypeError: boom' in ret.stderr
         """.format(console_script.command_name),
         launch_mode_conf=launch_mode,
         passed=1

@@ -20,7 +20,7 @@ setup(
     description='Pytest plugin for testing console scripts',
     long_description=read('README.rst'),
     py_modules=['pytest_console_scripts'],
-    install_requires=['pytest>=2.9.1', 'mock>=2.0.0'],
+    install_requires=['pytest>=3.0.0', 'mock>=2.0.0'],
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: Pytest',
