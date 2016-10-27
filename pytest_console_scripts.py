@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import io
+import os
 import subprocess
 import sys
 import traceback
@@ -88,13 +89,12 @@ class ScriptRunner(object):
         self.rootdir = rootdir
 
     def __repr__(self):
-        return "<ScriptRunner {}>".format(self.launch_mode)
+        return '<ScriptRunner {}>'.format(self.launch_mode)
 
     def run(self, command, *arguments, **options):
         if self.launch_mode == 'inprocess':
             return self.run_inprocess(command, *arguments, **options)
-        else:
-            return self.run_subprocess(command, *arguments, **options)
+        return self.run_subprocess(command, *arguments, **options)
 
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
@@ -105,6 +105,9 @@ class ScriptRunner(object):
         stdout_patch = mock.patch('sys.stdout', new=stdout)
         stderr_patch = mock.patch('sys.stderr', new=stderr)
         argv_patch = mock.patch('sys.argv', new=cmdargs)
+        saved_dir = os.getcwd()
+        if 'cwd' in options:
+            os.chdir(options['cwd'])
         with stdout_patch, stderr_patch, argv_patch:
             try:
                 compiled = compile(script.read(), str(script), 'exec', flags=0)
@@ -124,12 +127,13 @@ class ScriptRunner(object):
                     traceback.print_exception(et, ev, tb.tb_next)
                 finally:
                     del tb
+        os.chdir(saved_dir)
         return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
 
     def run_subprocess(self, command, *arguments, **options):
         p = subprocess.Popen([command] + list(arguments),
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             universal_newlines=True)
+                             universal_newlines=True, **options)
         return RunResult(p.wait(), p.stdout.read(), p.stderr.read())
 
 

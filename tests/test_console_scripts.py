@@ -226,3 +226,53 @@ def test_throw_exception(script_runner):
         launch_mode_conf=launch_mode,
         passed=1
     )
+
+
+def test_run_script_with_cwd(console_script, run_test, launch_mode, tmpdir):
+    console_script.write(
+        """
+from __future__ import print_function
+
+import os
+
+def main():
+    print(os.getcwd())
+        """
+    )
+    run_test(
+        r"""
+def test_cwd(script_runner):
+    ret = script_runner.run('{script_name}', cwd='{cwd}')
+    assert ret.success
+    assert ret.stdout == '{cwd}\n'
+        """.format(script_name=console_script.command_name, cwd=tmpdir),
+        launch_mode_conf=launch_mode
+    )
+
+
+def test_preserve_cwd(console_script, run_test, launch_mode):
+    console_script.write(
+        """
+from __future__ import print_function
+
+import os
+import sys
+
+def main():
+    os.chdir(sys.argv[1])
+    print(os.getcwd())
+        """
+    )
+    run_test(
+        r"""
+import os
+
+def test_preserve_cwd(script_runner, tmpdir):
+    dir1 = tmpdir.mkdir('dir1')
+    dir2 = tmpdir.mkdir('dir2')
+    os.chdir(str(dir1))
+    ret = script_runner.run('{script_name}', str(dir2))
+    assert ret.stdout == str(dir2) + '\n'
+    assert os.getcwd() == str(dir1)
+        """.format(script_name=console_script.command_name)
+    )
