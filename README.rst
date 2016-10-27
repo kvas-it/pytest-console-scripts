@@ -17,8 +17,8 @@ much as possible.
 Requirements
 ------------
 
-* Python 2.7 or 3.5, or PyPy,
-* Pytest 2.9.1 or newer.
+* Python 2.7 or 3.4+, or PyPy,
+* Pytest 3.0 or newer.
 
 
 Installation
