@@ -276,3 +276,26 @@ def test_preserve_cwd(script_runner, tmpdir):
     assert os.getcwd() == str(dir1)
         """.format(script_name=console_script.command_name)
     )
+
+
+def test_run_script_with_stdin(console_script, run_test, launch_mode):
+    console_script.write(
+        """
+import sys
+
+def main():
+    for line in sys.stdin:
+        sys.stdout.write('simon says ' + line)
+        """
+    )
+    run_test(
+        r"""
+import io
+
+def test_stdin(script_runner):
+    ret = script_runner.run('{script_name}', stdin=io.StringIO(u'foo\nbar'))
+    assert ret.success
+    assert ret.stdout == 'simon says foo\nsimon says bar'
+        """.format(script_name=console_script.command_name),
+        launch_mode_conf=launch_mode
+    )

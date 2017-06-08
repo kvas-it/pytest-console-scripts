@@ -99,16 +99,18 @@ class ScriptRunner(object):
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
         script = py.path.local(sys.executable).join('..', command)
+        stdin = options.get('stdin', StreamMock())
         stdout = StreamMock()
         stderr = StreamMock()
         returncode = 0
+        stdin_patch = mock.patch('sys.stdin', new=stdin)
         stdout_patch = mock.patch('sys.stdout', new=stdout)
         stderr_patch = mock.patch('sys.stderr', new=stderr)
         argv_patch = mock.patch('sys.argv', new=cmdargs)
         saved_dir = os.getcwd()
         if 'cwd' in options:
             os.chdir(options['cwd'])
-        with stdout_patch, stderr_patch, argv_patch:
+        with stdin_patch, stdout_patch, stderr_patch, argv_patch:
             try:
                 compiled = compile(script.read(), str(script), 'exec', flags=0)
                 exec(compiled, {'__name__': '__main__'})
@@ -131,10 +133,15 @@ class ScriptRunner(object):
         return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
 
     def run_subprocess(self, command, *arguments, **options):
+        stdin = ''
+        if 'stdin' in options:
+            stdin = options['stdin'].read()
+            options['stdin'] = subprocess.PIPE
         p = subprocess.Popen([command] + list(arguments),
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                              universal_newlines=True, **options)
-        return RunResult(p.wait(), p.stdout.read(), p.stderr.read())
+        stdout, stderr = p.communicate(stdin)
+        return RunResult(p.returncode, stdout, stderr)
 
 
 @pytest.fixture

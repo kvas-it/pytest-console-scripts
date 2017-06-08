@@ -45,18 +45,26 @@ Imagine we have a python package ``foo`` with the following ``setup.py``:
         },
     )
 
-We could use pytest-console-scripts to test the ``foobar`` script:
+We could use pytest-console-scripts to test the ``foo`` script:
 
 .. code-block:: python
 
-    def test_foobar(script_runner):
-        ret = script_runner.run('foobar')
+    def test_foo_bar(script_runner):
+        ret = script_runner.run('foo', 'bar')
         assert ret.success
-        assert ret.stdout == 'foobar\n'
+        assert ret.stdout == 'bar\n'
         assert ret.stderr == ''
 
 This would use the ``script_runner`` fixture provided by the plugin to
 run the script and capture it's output.
+
+The arguments of ``script_runner.run`` are the command name of the script and
+any command line arguments that should be passed to it. Additionally the
+following keyword arguments can be used:
+
+- ``cwd`` - set the working directory of the script under test.
+- ``stdin`` - a file-like object that will be piped to standard input of the
+  script.
 
 Configuring script execution mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
