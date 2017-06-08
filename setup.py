@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name='pytest-console-scripts',
-    version='0.1.2',
+    version='0.1.3',
     author='Vasily Kuznetsov',
     author_email='kvas.it@gmail.com',
     maintainer='Vasily Kuznetsov',
@@ -22,7 +22,7 @@ setup(
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=3.0.0', 'mock>=2.0.0'],
     classifiers=[
-        'Development Status :: 3 - Alpha',
+        'Development Status :: 4 - Beta',
         'Framework :: Pytest',
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Testing',
@@ -33,6 +33,7 @@ setup(
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
+        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Operating System :: OS Independent',
