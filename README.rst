@@ -45,14 +45,16 @@ Imagine we have a python package ``foo`` with the following ``setup.py``:
         },
     )
 
-We could use pytest-console-scripts to test the ``foo`` script:
+We could use pytest-console-scripts to test the ``foobar`` script:
 
 .. code-block:: python
 
     def test_foo_bar(script_runner):
-        ret = script_runner.run('foo', 'bar')
+        ret = script_runner.run('foobar', '--version')
         assert ret.success
-        assert ret.stdout == 'bar\n'
+        # just for example, let's assume that foobar --version 
+        # should output 3.2.1
+        assert ret.stdout == '3.2.1\n'
         assert ret.stderr == ''
 
 This would use the ``script_runner`` fixture provided by the plugin to
