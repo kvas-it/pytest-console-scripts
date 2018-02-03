@@ -137,9 +137,11 @@ class ScriptRunner(object):
         if 'stdin' in options:
             stdin = options['stdin'].read()
             options['stdin'] = subprocess.PIPE
+        if 'universal_newlines' not in options:
+            options['universal_newlines'] = True
         p = subprocess.Popen([command] + list(arguments),
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             universal_newlines=True, **options)
+                             **options)
         stdout, stderr = p.communicate(stdin)
         return RunResult(p.returncode, stdout, stderr)
 
