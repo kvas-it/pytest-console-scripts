@@ -1,0 +1,7 @@
+graft tests
+
+include tox.ini .travis.yml
+include LICENSE
+include README.rst
+
+global-exclude *.py[cod] __pycache__
