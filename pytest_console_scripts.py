@@ -36,6 +36,13 @@ def pytest_addoption(parser):
     )
 
 
+def _get_mark_mode(metafunc):
+    """Return launch mode as indicated by test function marker or None."""
+    func = metafunc.function
+    if hasattr(func, 'script_launch_mode'):
+        return func.script_launch_mode.combined.args[0]
+
+
 def pytest_generate_tests(metafunc):
     """Parametrize script_launch_mode fixture.
 
@@ -56,12 +63,12 @@ def pytest_generate_tests(metafunc):
     if 'script_launch_mode' not in metafunc.fixturenames:
         return
 
-    launch_mode_mark = getattr(metafunc.function, 'script_launch_mode', None)
-    mark_mode = launch_mode_mark.args[0] if launch_mode_mark else None
+    mark_mode = _get_mark_mode(metafunc)
     option_mode = metafunc.config.option.script_launch_mode
     config_mode = metafunc.config.getini('script_launch_mode')
 
     mode = mark_mode or option_mode or config_mode or 'inprocess'
+
     if mode in {'inprocess', 'subprocess'}:
         metafunc.parametrize('script_launch_mode', [mode])
     elif mode == 'both':
