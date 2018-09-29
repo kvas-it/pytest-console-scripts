@@ -74,6 +74,16 @@ def console_script(pcs_venv, tmpdir_factory):
     script = tmpdir_factory.mktemp('script').join('console_script.py')
     script.write('def main(): pass')
     pcs_venv.install_console_script('console-script', script)
+
+    def replace(new_source):
+        """Replace script source."""
+        script.write(new_source)
+        pyc = script.strpath + 'c'
+        if os.path.exists(pyc):
+            # Remove stale bytecode that causes heisenbugs on py27.
+            os.remove(pyc)
+
+    script.replace = replace
     return script
 
 
@@ -86,11 +96,10 @@ def launch_mode(request):
 @pytest.fixture
 def test_script_in_venv(pcs_venv, console_script, tmpdir, launch_mode):
     """A fixture that tests provided script with provided test."""
-    pytest_path = py.path.local(sys.executable).dirpath('pytest').strpath
 
     def run(script_src, test_src, **kw):
         """Test provided script with a provided test."""
-        console_script.write(script_src)
+        console_script.replace(script_src)
         test = tmpdir.join('test.py')
         test.write(test_src)
         # Execute pytest with the python of the virtualenv we created,
@@ -98,7 +107,7 @@ def test_script_in_venv(pcs_venv, console_script, tmpdir, launch_mode):
         # which is wrong.
         test_cmd = [
             'python',
-            pytest_path,
+            '-m', 'pytest',
             '--script-launch-mode=' + launch_mode,
             test.strpath,
         ]
