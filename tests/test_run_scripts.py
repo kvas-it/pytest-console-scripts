@@ -232,3 +232,25 @@ def test_cwd(script_runner):
     assert ret.stdout == '{cwd}\n'
         """.format(cwd=tmpdir),
     )
+
+
+def test_set_env_inprocess(test_script_in_venv):
+    test_script_in_venv(
+        """
+from __future__ import print_function
+
+import os
+
+def main():
+    print(os.environ['FOO'])
+        """,
+        r"""
+import pytest
+
+@pytest.mark.script_launch_mode('inprocess')
+def test_env(script_runner):
+    ret = script_runner.run('console-script', env={'FOO': 'bar'})
+    assert ret.success
+    assert 'bar\n' == ret.stdout
+        """
+    )
