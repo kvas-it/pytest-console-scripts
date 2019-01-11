@@ -115,6 +115,11 @@ class ScriptRunner(object):
         stderr_patch = mock.patch('sys.stderr', new=stderr)
         argv_patch = mock.patch('sys.argv', new=cmdargs)
         saved_dir = os.getcwd()
+
+        if 'env' in options:
+            old_env = os.environ
+            os.environ = options.get('env')
+
         if 'cwd' in options:
             os.chdir(options['cwd'])
         with stdin_patch, stdout_patch, stderr_patch, argv_patch:
@@ -137,6 +142,10 @@ class ScriptRunner(object):
                 finally:
                     del tb
         os.chdir(saved_dir)
+
+        if 'env' in options:
+            os.environ = old_env
+
         return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
 
     def run_subprocess(self, command, *arguments, **options):
