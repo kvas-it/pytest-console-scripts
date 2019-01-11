@@ -38,9 +38,9 @@ def pytest_addoption(parser):
 
 def _get_mark_mode(metafunc):
     """Return launch mode as indicated by test function marker or None."""
-    func = metafunc.function
-    if hasattr(func, 'script_launch_mode'):
-        return func.script_launch_mode.combined.args[0]
+    marker = metafunc.definition.get_closest_marker('script_launch_mode')
+    if marker:
+        return marker.args[0]
 
 
 def pytest_generate_tests(metafunc):
