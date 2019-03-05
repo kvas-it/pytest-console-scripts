@@ -1,5 +1,6 @@
 from __future__ import unicode_literals
 
+import distutils.spawn
 import io
 import os
 import subprocess
@@ -105,7 +106,7 @@ class ScriptRunner(object):
 
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
-        script = py.path.local(sys.executable).join('..', command)
+        script = py.path.local(distutils.spawn.find_executable(command))
         stdin = options.get('stdin', StreamMock())
         stdout = StreamMock()
         stderr = StreamMock()
