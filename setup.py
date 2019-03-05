@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name='pytest-console-scripts',
-    version='0.1.8',
+    version='0.1.9',
     author='Vasily Kuznetsov',
     author_email='kvas.it@gmail.com',
     maintainer='Vasily Kuznetsov',
@@ -34,6 +34,7 @@ setup(
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Operating System :: OS Independent',
