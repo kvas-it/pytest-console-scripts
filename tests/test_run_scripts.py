@@ -29,17 +29,20 @@ class VEnvWrapper:
 
     def __init__(self, path):
         self.path = path
+        self.virtualenv = 'VIRTUAL_ENV' in os.environ
 
     def _update_env(self, env):
         bin_dir = self.path.join('bin').strpath
         env['PATH'] = bin_dir + ':' + env.get('PATH', '')
         env['VIRTUAL_ENV'] = self.path.strpath
-        env['PYTHONPATH'] = ':'.join(sys.path)
+        if self.virtualenv:
+            # If we are running in a Virtualenv, make the packages from the
+            # environment running the outer test to the inner test.
+            env['PYTHONPATH'] = ':'.join(sys.path)
 
     def run(self, cmd, *args, **kw):
         """Run a command in the virtualenv."""
         self._update_env(kw.setdefault('env', os.environ))
-        print(kw['env']['PATH'], kw['env']['PYTHONPATH'])
         subprocess.check_call(cmd, *args, **kw)
 
     def install_console_script(self, cmd, script_path):
