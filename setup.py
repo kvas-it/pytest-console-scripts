@@ -46,5 +46,5 @@ setup(
         ],
     },
     test_suite='tests',
-    tests_require=['pytest'],
+    tests_require=['pytest', 'virtualenv', 'mock'],
 )

@@ -29,17 +29,40 @@ class VEnvWrapper:
 
     def __init__(self, path):
         self.path = path
+        dpp = self._distpackages_path()
+        if dpp is not None:
+            self.path.mkdir(dpp)
+
+    def _distpackages_path(self):
+        """Return (relative) path used for installing distribution packages.
+
+        On Debian-based systems packages are installed into .../dist-packages
+        instead of .../site-packages. This function returns the relative path
+        of this directory inside of a virtualenv so that we can create it and
+        avoid setup.py failure.
+
+        Will return `None` on systems that don't do this or when running inside
+        of a virtualenv.
+        """
+        for path in sys.path:
+            if path.endswith('dist-packages'):
+                parts = path.split(os.path.sep)
+                if 'lib' in parts:
+                    parts = parts[parts.index('lib'):]
+                    return os.path.join(*parts)
 
     def _update_env(self, env):
         bin_dir = self.path.join('bin').strpath
         env['PATH'] = bin_dir + ':' + env.get('PATH', '')
         env['VIRTUAL_ENV'] = self.path.strpath
+        # Make installed packages of the Python installation that runs this
+        # test accessible. This allows us to run tests in the virtualenv
+        # without installing all the dependencies there.
         env['PYTHONPATH'] = ':'.join(sys.path)
 
     def run(self, cmd, *args, **kw):
         """Run a command in the virtualenv."""
-        self._update_env(kw.setdefault('env', os.environ))
-        print(kw['env']['PATH'], kw['env']['PYTHONPATH'])
+        self._update_env(kw.setdefault('env', dict(os.environ)))
         subprocess.check_call(cmd, *args, **kw)
 
     def install_console_script(self, cmd, script_path):
