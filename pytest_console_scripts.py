@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function
 
 import distutils.spawn
 import io
@@ -86,6 +86,9 @@ class RunResult(object):
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
+        print('# Script return code:', returncode)
+        print('# Script stdout:', stdout, sep='\n')
+        print('# Script stderr:', stderr, sep='\n')
 
 
 class ScriptRunner(object):
@@ -100,6 +103,7 @@ class ScriptRunner(object):
         return '<ScriptRunner {}>'.format(self.launch_mode)
 
     def run(self, command, *arguments, **options):
+        print('# Running console script:', command, *arguments)
         if self.launch_mode == 'inprocess':
             return self.run_inprocess(command, *arguments, **options)
         return self.run_subprocess(command, *arguments, **options)

@@ -61,9 +61,13 @@ class VEnvWrapper:
         env['PYTHONPATH'] = ':'.join(sys.path)
 
     def run(self, cmd, *args, **kw):
-        """Run a command in the virtualenv."""
+        """Run a command in the virtualenv, return terminated process."""
         self._update_env(kw.setdefault('env', dict(os.environ)))
-        subprocess.check_call(cmd, *args, **kw)
+        kw.setdefault('stdout', subprocess.PIPE)
+        kw.setdefault('stderr', subprocess.PIPE)
+        proc = subprocess.Popen(cmd, *args, **kw)
+        proc.wait()
+        return proc
 
     def install_console_script(self, cmd, script_path):
         """Run setup.py to install console script into this virtualenv."""
@@ -134,7 +138,7 @@ def test_script_in_venv(pcs_venv, console_script, tmpdir, launch_mode):
             '--script-launch-mode=' + launch_mode,
             test.strpath,
         ]
-        pcs_venv.run(test_cmd, **kw)
+        return pcs_venv.run(test_cmd, **kw)
 
     return run
 
@@ -277,3 +281,37 @@ def test_env(script_runner):
     assert 'bar\n' == ret.stdout
         """
     )
+
+
+@pytest.mark.parametrize('fail', [True, False])
+def test_print_stdio_on_error(test_script_in_venv, fail):
+    """Check that the content of stdout and stderr is printed on error."""
+    proc = test_script_in_venv(
+        """
+from __future__ import print_function
+
+def main():
+    print('12345')
+    raise Exception('54321')
+        """,
+        """
+def test_fail(script_runner):
+    ret = script_runner.run('console-script', 'foo')
+    assert ret.success is {}
+        """.format(fail),
+    )
+    stdout = proc.stdout.read()
+    if type(stdout) != type(''):  # In Python 3 we convert stdout to unicode.
+        stdout = stdout.decode('utf-8')
+    if fail:
+        assert proc.returncode != 0
+        assert '# Running console script: console-script foo\n' in stdout
+        assert '# Script return code: 1\n' in stdout
+        assert '# Script stdout:\n12345\n' in stdout
+        assert '# Script stderr:\nTraceback' in stdout
+        assert 'Exception: 54321' in stdout
+    else:
+        assert proc.returncode == 0
+        assert 'console-script foo' not in stdout
+        assert '12345' not in stdout
+        assert '54321' not in stdout
