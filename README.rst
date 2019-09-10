@@ -18,7 +18,7 @@ Requirements
 ------------
 
 * Python 2.7 or 3.4+, or PyPy,
-* Pytest 3.0 or newer.
+* Pytest 4.0 or newer.
 
 
 Installation
