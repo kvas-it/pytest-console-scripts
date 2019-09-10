@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name='pytest-console-scripts',
-    version='0.1.9',
+    version='0.1.10',
     author='Vasily Kuznetsov',
     author_email='kvas.it@gmail.com',
     maintainer='Vasily Kuznetsov',
