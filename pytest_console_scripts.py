@@ -37,6 +37,14 @@ def pytest_addoption(parser):
     )
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        'markers',
+        'script_launch_mode: how to run python scripts under test '
+            '(inprocess|subprocess|both)',
+    )
+
+
 def _get_mark_mode(metafunc):
     """Return launch mode as indicated by test function marker or None."""
     marker = metafunc.definition.get_closest_marker('script_launch_mode')
