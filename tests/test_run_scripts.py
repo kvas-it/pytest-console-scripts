@@ -98,17 +98,21 @@ def console_script(pcs_venv, tmpdir_factory):
     will overwrite the content of the script exposed by this fixture to get
     the behavior that it needs.
     """
-    script = tmpdir_factory.mktemp('script').join('console_script.py')
+    script_dir = tmpdir_factory.mktemp('script')
+    script = script_dir.join('console_script.py')
+    pyc = script_dir.join('console_script.pyc')
+    cache_dir = script_dir.join('__pycache__')
     script.write('def main(): pass')
     pcs_venv.install_console_script('console-script', script)
 
     def replace(new_source):
         """Replace script source."""
         script.write(new_source)
-        pyc = script.strpath + 'c'
-        if os.path.exists(pyc):
-            # Remove stale bytecode that causes heisenbugs on py27.
-            os.remove(pyc)
+        # Remove stale bytecode that causes heisenbugs on py27 and pypy.
+        if pyc.check():
+            pyc.remove()
+        if cache_dir.check():
+            cache_dir.remove(rec=1)
 
     script.replace = replace
     return script
