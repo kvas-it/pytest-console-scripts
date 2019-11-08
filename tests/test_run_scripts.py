@@ -334,3 +334,25 @@ def test_fail(script_runner):
         assert 'console-script foo' not in stdout
         assert '12345' not in stdout
         assert '54321' not in stdout
+
+
+def test_basic_logging(test_script_in_venv):
+    test_script_in_venv(
+        """
+import logging
+import sys
+
+def main():
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+    logging.debug('hidden')
+    logging.info('shown')
+        """,
+        r"""
+import pytest
+
+def test_env(script_runner):
+    ret = script_runner.run('console-script')
+    assert ret.success
+    assert ret.stderr == 'INFO:root:shown\n'
+        """
+    )

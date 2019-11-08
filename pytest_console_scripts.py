@@ -2,6 +2,7 @@ from __future__ import unicode_literals, print_function
 
 import distutils.spawn
 import io
+import logging
 import os
 import subprocess
 import sys
@@ -116,6 +117,33 @@ class ScriptRunner(object):
             return self.run_inprocess(command, *arguments, **options)
         return self.run_subprocess(command, *arguments, **options)
 
+    def _save_and_reset_logger(self):
+        """Do a very basic reset of the root logger and return its config.
+
+        This allows scripts to call logging.basicConfig(...) and have
+        it work as expected. It might not work for more sophisticated logging
+        setups but it's simple and covers the basic usage whereas implementing
+        a comprehensive fix is impossible in a compatible way.
+
+        """
+        logger = logging.getLogger()
+        config = {
+            'level': logger.level,
+            'handlers': logger.handlers,
+            'disabled': logger.disabled,
+        }
+        logger.handlers = []
+        logger.disabled = False
+        logger.setLevel(logging.NOTSET)
+        return config
+
+    def _restore_logger(self, config):
+        """Restore logger to previous configuration."""
+        logger = logging.getLogger()
+        logger.handlers = config['handlers']
+        logger.disabled = config['disabled']
+        logger.setLevel(config['level'])
+
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
         script = py.path.local(distutils.spawn.find_executable(command))
@@ -128,6 +156,7 @@ class ScriptRunner(object):
         stderr_patch = mock.patch('sys.stderr', new=stderr)
         argv_patch = mock.patch('sys.argv', new=cmdargs)
         saved_dir = os.getcwd()
+        logger_conf = self._save_and_reset_logger()
 
         if 'env' in options:
             old_env = os.environ
@@ -154,6 +183,8 @@ class ScriptRunner(object):
                     traceback.print_exception(et, ev, tb.tb_next)
                 finally:
                     del tb
+
+        self._restore_logger(logger_conf)
         os.chdir(saved_dir)
 
         if 'env' in options:
