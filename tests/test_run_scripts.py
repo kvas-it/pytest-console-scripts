@@ -120,8 +120,8 @@ def launch_mode(request):
     return request.param
 
 
-@pytest.fixture
-def test_script_in_venv(pcs_venv, console_script, tmpdir, launch_mode):
+@pytest.fixture()
+def run_script_in_venv(pcs_venv, console_script, tmpdir, launch_mode):
     """A fixture that tests provided script with provided test."""
 
     def run(script_src, test_src, **kw):
@@ -141,6 +141,21 @@ def test_script_in_venv(pcs_venv, console_script, tmpdir, launch_mode):
         return pcs_venv.run(test_cmd, **kw)
 
     return run
+
+
+@pytest.fixture()
+def test_script_in_venv(run_script_in_venv):
+    """Tests provided script with provided test and check that it passed."""
+
+    def test(script_src, test_src, **kw):
+        proc = run_script_in_venv(script_src, test_src, **kw)
+        print('--- test run stdout ---')
+        print(proc.stdout.read().decode('utf-8'))
+        print('--- test run stderr ---')
+        print(proc.stderr.read().decode('utf-8'))
+        assert proc.returncode == 0
+
+    return test
 
 
 @pytest.mark.parametrize('script,test', [
@@ -284,9 +299,9 @@ def test_env(script_runner):
 
 
 @pytest.mark.parametrize('fail', [True, False])
-def test_print_stdio_on_error(test_script_in_venv, fail):
+def test_print_stdio_on_error(run_script_in_venv, fail):
     """Check that the content of stdout and stderr is printed on error."""
-    proc = test_script_in_venv(
+    proc = run_script_in_venv(
         """
 from __future__ import print_function
 
