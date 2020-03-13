@@ -1,9 +1,8 @@
+import json
 import os
 import subprocess
 import sys
 
-import mock
-import py
 import pytest
 import virtualenv
 
@@ -32,6 +31,7 @@ class VEnvWrapper:
         dpp = self._distpackages_path()
         if dpp is not None:
             self.path.mkdir(dpp)
+        self.sys_path = self._get_sys_path()
 
     def _distpackages_path(self):
         """Return (relative) path used for installing distribution packages.
@@ -51,18 +51,33 @@ class VEnvWrapper:
                     parts = parts[parts.index('lib'):]
                     return os.path.join(*parts)
 
-    def _update_env(self, env):
+    def _get_sys_path(self):
+        """Return sys.path of this virtualenv."""
+        result = self.run([
+            'python', '-c',
+            'import json,sys; print(json.dumps(sys.path))',
+        ], skip_pythonpath=True)
+        assert result.returncode == 0
+        return json.loads(str(result.stdout.read(), encoding='utf-8'))
+
+    def _update_env(self, env, skip_pythonpath=False):
         bin_dir = self.path.join('bin').strpath
         env['PATH'] = bin_dir + ':' + env.get('PATH', '')
+        if 'PYTHONHOME' in env:
+            del env['PYTHONHOME']
         env['VIRTUAL_ENV'] = self.path.strpath
+        if skip_pythonpath:
+            return
         # Make installed packages of the Python installation that runs this
         # test accessible. This allows us to run tests in the virtualenv
         # without installing all the dependencies there.
-        env['PYTHONPATH'] = ':'.join(sys.path)
+        python_path = set(sys.path + self.sys_path)
+        env['PYTHONPATH'] = ':'.join(python_path)
 
-    def run(self, cmd, *args, **kw):
+    def run(self, cmd, skip_pythonpath=False, *args, **kw):
         """Run a command in the virtualenv, return terminated process."""
-        self._update_env(kw.setdefault('env', dict(os.environ)))
+        self._update_env(kw.setdefault('env', dict(os.environ)),
+                         skip_pythonpath=skip_pythonpath)
         kw.setdefault('stdout', subprocess.PIPE)
         kw.setdefault('stderr', subprocess.PIPE)
         proc = subprocess.Popen(cmd, *args, **kw)
@@ -75,14 +90,16 @@ class VEnvWrapper:
         script_name = script_path.purebasename
         setup_py = script_dir.join('setup.py')
         setup_py.write(SETUP_TEMPLATE.format(cmd=cmd, script_name=script_name))
-        self.run(['python', 'setup.py', 'develop'], cwd=str(script_dir))
+        result = self.run(['python', 'setup.py', 'develop'],
+                          cwd=str(script_dir), skip_pythonpath=True)
+        assert result.returncode == 0
 
 
 @pytest.fixture(scope='session')
 def pcs_venv(tmpdir_factory):
     """Virtualenv for testing console scripts."""
     venv = tmpdir_factory.mktemp('venv')
-    virtualenv.create_environment(venv.strpath)
+    virtualenv.cli_run([venv.strpath])
     yield VEnvWrapper(venv)
 
 

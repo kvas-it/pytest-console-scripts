@@ -146,7 +146,10 @@ class ScriptRunner(object):
 
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
-        script = py.path.local(distutils.spawn.find_executable(command))
+        script_path = distutils.spawn.find_executable(command)
+        if script_path is None:
+            raise FileNotFoundError('Cannot execute ' + command)
+        script = py.path.local(script_path)
         stdin = options.get('stdin', StreamMock())
         stdout = StreamMock()
         stderr = StreamMock()
