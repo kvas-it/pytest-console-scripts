@@ -42,7 +42,7 @@ def pytest_configure(config):
     config.addinivalue_line(
         'markers',
         'script_launch_mode: how to run python scripts under test '
-            '(inprocess|subprocess|both)',
+        '(inprocess|subprocess|both)',
     )
 
 
@@ -82,7 +82,8 @@ def pytest_generate_tests(metafunc):
     if mode in {'inprocess', 'subprocess'}:
         metafunc.parametrize('script_launch_mode', [mode], indirect=True)
     elif mode == 'both':
-        metafunc.parametrize('script_launch_mode', ['inprocess', 'subprocess'], indirect=True)
+        metafunc.parametrize('script_launch_mode', ['inprocess', 'subprocess'],
+                             indirect=True)
     else:
         raise ValueError('Invalid script launch mode: {}'.format(mode))
 
@@ -178,7 +179,7 @@ class ScriptRunner(object):
                     returncode = 1
                 elif returncode is None:
                     returncode = 0
-            except Exception as exc:
+            except Exception:
                 returncode = 1
                 try:
                     et, ev, tb = sys.exc_info()
