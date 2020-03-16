@@ -17,7 +17,7 @@ much as possible.
 Requirements
 ------------
 
-* Python 2.7 or 3.4+, or PyPy,
+* Python 3.5+, or PyPy3,
 * Pytest 4.0 or newer.
 
 
@@ -85,7 +85,7 @@ configure it via pytest configuration (for example in ``tox.ini``):
 We can give a command line option to pytest (this will override the
 configuration file)::
 
-    $ py.test --script-launch-mode=subprocess test_foobar.py
+    $ pytest --script-launch-mode=subprocess test_foobar.py
 
 We can also mark individual tests to run in a specific mode:
 

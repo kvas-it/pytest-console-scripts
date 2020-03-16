@@ -336,9 +336,7 @@ def test_fail(script_runner):
     assert ret.success is {}
         """.format(fail),
     )
-    stdout = proc.stdout.read()
-    if type(stdout) != type(''):  # In Python 3 we convert stdout to unicode.
-        stdout = stdout.decode('utf-8')
+    stdout = proc.stdout.read().decode('utf-8')
     if fail:
         assert proc.returncode != 0
         assert '# Running console script: console-script foo\n' in stdout

@@ -1,11 +1,11 @@
-import io
 import os
 from setuptools import setup
 
 
 def read(fname):
     file_path = os.path.join(os.path.dirname(__file__), fname)
-    return io.open(file_path, encoding='utf-8').read()
+    with open(file_path, encoding='utf-8') as f:
+        return f.read()
 
 
 setup(
@@ -27,14 +27,11 @@ setup(
         'Intended Audience :: Developers',
         'Topic :: Software Development :: Testing',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.3',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: Implementation :: CPython',
         'Programming Language :: Python :: Implementation :: PyPy',
         'Operating System :: OS Independent',
