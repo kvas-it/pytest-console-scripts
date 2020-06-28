@@ -101,6 +101,25 @@ can take three possible values: "inprocess" (which is the default),
 "subprocess", and "both" (which will cause the test to be run twice: in
 inprocess and in subprocess modes).
 
+Package installation and testing during development
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since pytest-console-scripts relies on the scripts being located in the path,
+it can only run the console scripts from packages that have been installed (if
+you are interested in working on removing this limitation, take a look at `this
+ticket <https://github.com/kvas-it/pytest-console-scripts/issues/34>`_ and in
+particular `this comment
+<https://github.com/kvas-it/pytest-console-scripts/issues/34#issuecomment-649497564>`_).
+If you want to run the tests quickly during development, the additional
+installation step would add a significant overhead and slow you down.
+
+There's a way around this: install your package in `development mode`_ using
+``python setup.py develop``. If you use `tox`_, you can take one of its
+existing virtualenvs (they live in ``.tox/``). Otherwise create a `virtualenv`_
+just for development, activate it and run ``python setup.py develop`` to
+install your package in development mode. You will need to re-install every
+time you add a new console script, but otherwise all the changes to your code
+will be immediately picked up by the tests.
 
 Contributing
 ------------
@@ -133,6 +152,8 @@ Pytest-console-scripts was initially generated with `Cookiecutter`_ along with
 .. _`cookiecutter-pytest-plugin`: https://github.com/pytest-dev/cookiecutter-pytest-plugin
 .. _`file an issue`: https://github.com/kvas-it/pytest-console-scripts/issues
 .. _`pytest`: https://github.com/pytest-dev/pytest
+.. _`development mode`: https://setuptools.readthedocs.io/en/latest/setuptools.html#development-mode
+.. _`virtualenv`: https://docs.python.org/3/library/venv.html
 .. _`tox`: https://tox.readthedocs.org/en/latest/
 .. _`pip`: https://pypi.python.org/pypi/pip/
 .. _`PyPI`: https://pypi.python.org/pypi
