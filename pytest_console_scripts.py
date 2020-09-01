@@ -1,9 +1,9 @@
 from __future__ import unicode_literals, print_function
 
-import distutils.spawn
 import io
 import logging
 import os
+import shutil
 import subprocess
 import sys
 import traceback
@@ -51,6 +51,14 @@ def _get_mark_mode(metafunc):
     marker = metafunc.definition.get_closest_marker('script_launch_mode')
     if marker:
         return marker.args[0]
+
+
+def _is_nonexecutable_python_file(command):
+    """Check if `command` is a Python file with no executable mode set."""
+    mode = os.stat(command).st_mode
+    if mode & os.X_OK:
+        return False
+    return os.path.splitext(command)[1] == '.py'
 
 
 def pytest_generate_tests(metafunc):
@@ -145,12 +153,25 @@ class ScriptRunner(object):
         logger.disabled = config['disabled']
         logger.setLevel(config['level'])
 
+    def _locate_script(self, command, **options):
+        """Locate script in PATH or in current directory."""
+        script_path = shutil.which(
+            command,
+            path=options.get('env', {}).get('PATH', None),
+        )
+        if script_path is not None:
+            return script_path
+
+        cwd = options.get('cwd', os.getcwd())
+        script_path = os.path.join(cwd, command)
+        if os.path.exists(script_path):
+            return script_path
+
+        raise FileNotFoundError('Cannot find ' + command)
+
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
-        script_path = distutils.spawn.find_executable(command)
-        if script_path is None:
-            raise FileNotFoundError('Cannot execute ' + command)
-        script = py.path.local(script_path)
+        script = py.path.local(self._locate_script(command, **options))
         stdin = options.get('stdin', StreamMock())
         stdout = StreamMock()
         stderr = StreamMock()
@@ -197,17 +218,26 @@ class ScriptRunner(object):
         return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
 
     def run_subprocess(self, command, *arguments, **options):
-        stdin = ''
+        stdin_input = None
         if 'stdin' in options:
-            stdin = options['stdin'].read()
-            options['stdin'] = subprocess.PIPE
+            stdin_input = options['stdin'].read()
+            del options['stdin']
         if 'universal_newlines' not in options:
             options['universal_newlines'] = True
-        p = subprocess.Popen([command] + list(arguments),
-                             stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                             **options)
-        stdout, stderr = p.communicate(stdin)
-        return RunResult(p.returncode, stdout, stderr)
+
+        cmd_args = [command] + list(arguments)
+        script_path = self._locate_script(command, **options)
+        if _is_nonexecutable_python_file(script_path):
+            cmd_args = ['python'] + cmd_args
+
+        cp = subprocess.run(
+            cmd_args,
+            input=stdin_input,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            **options,
+        )
+        return RunResult(cp.returncode, cp.stdout, cp.stderr)
 
 
 @pytest.fixture
