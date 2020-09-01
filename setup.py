@@ -18,7 +18,8 @@ setup(
     license='MIT',
     url='https://github.com/kvas-it/pytest-console-scripts',
     description='Pytest plugin for testing console scripts',
-    long_description=read('README.rst'),
+    long_description=read('README.md'),
+    long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=4.0.0', 'mock>=2.0.0', 'pytest-runner'],
     classifiers=[
@@ -42,6 +43,4 @@ setup(
             'console-scripts = pytest_console_scripts',
         ],
     },
-    test_suite='tests',
-    tests_require=['pytest', 'virtualenv', 'mock'],
 )
