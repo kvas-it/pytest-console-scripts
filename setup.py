@@ -10,7 +10,7 @@ def read(fname):
 
 setup(
     name='pytest-console-scripts',
-    version='0.2.0',
+    use_scm_version=True,
     author='Vasily Kuznetsov',
     author_email='kvas.it@gmail.com',
     maintainer='Vasily Kuznetsov',
@@ -22,6 +22,7 @@ setup(
     long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=4.0.0', 'mock>=2.0.0', 'pytest-runner'],
+    setup_requires=['setuptools_scm'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Framework :: Pytest',
