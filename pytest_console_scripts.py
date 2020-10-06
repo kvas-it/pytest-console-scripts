@@ -208,6 +208,8 @@ class ScriptRunner(object):
         with stdin_patch, stdout_patch, stderr_patch, argv_patch:
             try:
                 returncode = script()
+                if returncode is None:
+                    returncode = 0  # None also means success.
             except SystemExit as exc:
                 returncode = exc.code
                 if isinstance(returncode, str):

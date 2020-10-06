@@ -76,6 +76,23 @@ def test_script(script_runner):
     assert result.success
 
 
+@pytest.mark.script_launch_mode('inprocess')
+def test_return_None(script_runner):
+    """Check that entry point function returning None is counted as success."""
+
+    # Many console_scripts entry point functions return 0 on success but not
+    # all of them do. Returning `None` is also allowed and would be translated
+    # to return code 0 when run normally via wrapper. This test checks that we
+    # handle this case properly in inprocess mode.
+    #
+    # One commonly available script that returns None from the entry point
+    # function is easy_install so we use it here.
+
+    result = script_runner.run('easy_install', '-h')
+    assert result.success
+    assert '--verbose' in result.stdout
+
+
 @pytest.mark.script_launch_mode('both')
 def test_abnormal_exit(console_script, script_runner):
     console_script.write('import sys;sys.exit("boom")')
