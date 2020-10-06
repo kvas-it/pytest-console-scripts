@@ -3,13 +3,13 @@ from __future__ import unicode_literals, print_function
 import io
 import logging
 import os
+import pkg_resources
 import shutil
 import subprocess
 import sys
 import traceback
 
 import mock
-import py.path
 import pytest
 
 if sys.version_info.major == 2:
@@ -169,13 +169,29 @@ class ScriptRunner(object):
 
         raise FileNotFoundError('Cannot find ' + command)
 
+    def _load_script(self, command, **options):
+        """Load target script via entry points or compile/exec."""
+        entry_points = list(pkg_resources.iter_entry_points('console_scripts',
+                                                            command))
+        if entry_points:
+            return entry_points[0].load()
+
+        script_path = self._locate_script(command, **options)
+
+        def exec_script():
+            with open(script_path, 'rt', encoding='utf-8') as script:
+                compiled = compile(script.read(), str(script), 'exec', flags=0)
+                exec(compiled, {'__name__': '__main__'})
+            return 0
+
+        return exec_script
+
     def run_inprocess(self, command, *arguments, **options):
         cmdargs = [command] + list(arguments)
-        script = py.path.local(self._locate_script(command, **options))
+        script = self._load_script(command, **options)
         stdin = options.get('stdin', StreamMock())
         stdout = StreamMock()
         stderr = StreamMock()
-        returncode = 0
         stdin_patch = mock.patch('sys.stdin', new=stdin)
         stdout_patch = mock.patch('sys.stdout', new=stdout)
         stderr_patch = mock.patch('sys.stderr', new=stderr)
@@ -191,8 +207,9 @@ class ScriptRunner(object):
             os.chdir(options['cwd'])
         with stdin_patch, stdout_patch, stderr_patch, argv_patch:
             try:
-                compiled = compile(script.read(), str(script), 'exec', flags=0)
-                exec(compiled, {'__name__': '__main__'})
+                returncode = script()
+                if returncode is None:
+                    returncode = 0  # None also means success.
             except SystemExit as exc:
                 returncode = exc.code
                 if isinstance(returncode, str):
