@@ -208,3 +208,24 @@ def test_fail(script_runner):
         assert '# Running console script' not in result.stdout
         assert '12345' not in result.stdout
         assert '54321' not in result.stdout
+
+
+@pytest.mark.script_launch_mode('inprocess')
+def test_mocking(console_script, script_runner, monkeypatch):
+    """Test mocking in of console scripts (in-process mode only).
+
+    Note: we can't mock objects in the script itself because it will not be
+    imported via normal import system but we can mock anything in the modules
+    that the script imports.
+
+    """
+    console_script.write(
+        """
+import os
+print(os.path.basename('foo'))
+        """
+    )
+    monkeypatch.setattr(os.path, 'basename', lambda foo: 'bar')
+    result = script_runner.run(str(console_script))
+    assert result.success
+    assert result.stdout == 'bar\n'
