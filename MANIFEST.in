@@ -1,6 +1,6 @@
 graft tests
 
-include tox.ini .travis.yml
+include tox.ini
 include LICENSE
 include *.md
 
