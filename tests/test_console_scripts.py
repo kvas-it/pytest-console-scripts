@@ -101,4 +101,5 @@ def test_help_message(testdir):
     result.stdout.fnmatch_lines([
         'console-scripts:',
         '*--script-launch-mode=*',
+        '*--hide-run-results*',
     ])

@@ -40,7 +40,6 @@ def test_elsewhere_in_the_path(console_script, script_runner):
 
 @pytest.mark.script_launch_mode('both')
 def test_run_pytest(tmpdir, console_script, script_runner, launch_mode):
-    # TODO: check if same process or not!
     console_script.write('import os;print(os.getpid())')
     test = tmpdir.join('test_{}.py'.format(launch_mode))
     compare = '==' if launch_mode == 'inprocess' else '!='
@@ -229,3 +228,39 @@ print(os.path.basename('foo'))
     result = script_runner.run(str(console_script))
     assert result.success
     assert result.stdout == 'bar\n'
+
+
+def test_hide_run_result_arg(tmpdir, console_script, script_runner):
+    """Disable printing of the RunResult to stdout with print_result=False."""
+    console_script.write('print("42")')
+    test = tmpdir.join('test_hrra.py')
+    test.write(
+        """
+import pytest
+
+@pytest.mark.script_launch_mode('both')
+def test_script(script_runner):
+    script_runner.run('{}', print_result=False)
+        """.format(console_script)
+    )
+    result = script_runner.run('pytest', '-s', str(test))
+    assert result.success
+    assert '42' not in result.stdout
+
+
+def test_hide_run_result_opt(tmpdir, console_script, script_runner):
+    """Disable printing of the RunResult to stdout with print_result=False."""
+    console_script.write('print("42")')
+    test = tmpdir.join('test_hrro.py')
+    test.write(
+        """
+import pytest
+
+@pytest.mark.script_launch_mode('both')
+def test_script(script_runner):
+    script_runner.run('{}')
+        """.format(console_script)
+    )
+    result = script_runner.run('pytest', '-s', '--hide-run-results', str(test))
+    assert result.success
+    assert '42' not in result.stdout
