@@ -232,7 +232,7 @@ print(os.path.basename('foo'))
 
 def test_hide_run_result_arg(tmpdir, console_script, script_runner):
     """Disable printing of the RunResult to stdout with print_result=False."""
-    console_script.write('print("42")')
+    console_script.write('print("the answer is 42")')
     test = tmpdir.join('test_hrra.py')
     test.write(
         """
@@ -245,12 +245,13 @@ def test_script(script_runner):
     )
     result = script_runner.run('pytest', '-s', str(test))
     assert result.success
-    assert '42' not in result.stdout
+    assert 'the answer is 42' not in result.stdout
+    assert 'Running console script' not in result.stdout
 
 
 def test_hide_run_result_opt(tmpdir, console_script, script_runner):
     """Disable printing of the RunResult to stdout with print_result=False."""
-    console_script.write('print("42")')
+    console_script.write('print("the answer is 42")')
     test = tmpdir.join('test_hrro.py')
     test.write(
         """
@@ -263,4 +264,5 @@ def test_script(script_runner):
     )
     result = script_runner.run('pytest', '-s', '--hide-run-results', str(test))
     assert result.success
-    assert '42' not in result.stdout
+    assert 'the answer is 42' not in result.stdout
+    assert 'Running console script' not in result.stdout

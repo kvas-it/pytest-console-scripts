@@ -131,7 +131,10 @@ class ScriptRunner(object):
         return '<ScriptRunner {}>'.format(self.launch_mode)
 
     def run(self, command, *arguments, **options):
-        print('# Running console script:', command, *arguments)
+        options.setdefault('print_result', self.print_result)
+        if options['print_result']:
+            print('# Running console script:', command, *arguments)
+
         if self.launch_mode == 'inprocess':
             return self.run_inprocess(command, *arguments, **options)
         return self.run_subprocess(command, *arguments, **options)
@@ -216,11 +219,7 @@ class ScriptRunner(object):
         if 'cwd' in options:
             os.chdir(options['cwd'])
 
-        if 'print_result' in options:
-            print_result = options['print_result']
-            del options['print_result']
-        else:
-            print_result = self.print_result
+        print_result = options.pop('print_result')
 
         with stdin_patch, stdout_patch, stderr_patch, argv_patch:
             try:
@@ -255,17 +254,10 @@ class ScriptRunner(object):
     def run_subprocess(self, command, *arguments, **options):
         stdin_input = None
         if 'stdin' in options:
-            stdin_input = options['stdin'].read()
-            del options['stdin']
+            stdin_input = options.pop('stdin').read()
 
-        if 'universal_newlines' not in options:
-            options['universal_newlines'] = True
-
-        if 'print_result' in options:
-            print_result = options['print_result']
-            del options['print_result']
-        else:
-            print_result = self.print_result
+        options.setdefault('universal_newlines', True)
+        print_result = options.pop('print_result')
 
         cmd_args = [command] + list(arguments)
         script_path = self._locate_script(command, **options)
