@@ -32,6 +32,14 @@ def pytest_addoption(parser):
         default=None,
         help='how to run python scripts under test (default: inprocess)'
     )
+    group.addoption(
+        '--hide-run-results',
+        action='store_true',
+        dest='hide_run_results',
+        default=False,
+        help="don't print out script run results on failures or when "
+             "output capturing is disabled"
+    )
     parser.addini(
         'script_launch_mode',
         'how to run python scripts under test (inprocess|subprocess|both)'
@@ -99,29 +107,34 @@ def pytest_generate_tests(metafunc):
 class RunResult(object):
     """Result of running a script."""
 
-    def __init__(self, returncode, stdout, stderr):
+    def __init__(self, returncode, stdout, stderr, print_result):
         self.success = returncode == 0
         self.returncode = returncode
         self.stdout = stdout
         self.stderr = stderr
-        print('# Script return code:', returncode)
-        print('# Script stdout:', stdout, sep='\n')
-        print('# Script stderr:', stderr, sep='\n')
+        if print_result:
+            print('# Script return code:', returncode)
+            print('# Script stdout:', stdout, sep='\n')
+            print('# Script stderr:', stderr, sep='\n')
 
 
 class ScriptRunner(object):
     """Fixture for running python scripts under test."""
 
-    def __init__(self, launch_mode, rootdir):
+    def __init__(self, launch_mode, rootdir, print_result=True):
         assert launch_mode in {'inprocess', 'subprocess'}
         self.launch_mode = launch_mode
+        self.print_result = print_result
         self.rootdir = rootdir
 
     def __repr__(self):
         return '<ScriptRunner {}>'.format(self.launch_mode)
 
     def run(self, command, *arguments, **options):
-        print('# Running console script:', command, *arguments)
+        options.setdefault('print_result', self.print_result)
+        if options['print_result']:
+            print('# Running console script:', command, *arguments)
+
         if self.launch_mode == 'inprocess':
             return self.run_inprocess(command, *arguments, **options)
         return self.run_subprocess(command, *arguments, **options)
@@ -205,6 +218,9 @@ class ScriptRunner(object):
 
         if 'cwd' in options:
             os.chdir(options['cwd'])
+
+        print_result = options.pop('print_result')
+
         with stdin_patch, stdout_patch, stderr_patch, argv_patch:
             try:
                 returncode = script()
@@ -232,15 +248,16 @@ class ScriptRunner(object):
         if 'env' in options:
             os.environ = old_env
 
-        return RunResult(returncode, stdout.getvalue(), stderr.getvalue())
+        return RunResult(returncode, stdout.getvalue(), stderr.getvalue(),
+                         print_result)
 
     def run_subprocess(self, command, *arguments, **options):
         stdin_input = None
         if 'stdin' in options:
-            stdin_input = options['stdin'].read()
-            del options['stdin']
-        if 'universal_newlines' not in options:
-            options['universal_newlines'] = True
+            stdin_input = options.pop('stdin').read()
+
+        options.setdefault('universal_newlines', True)
+        print_result = options.pop('print_result')
 
         cmd_args = [command] + list(arguments)
         script_path = self._locate_script(command, **options)
@@ -254,7 +271,7 @@ class ScriptRunner(object):
             stderr=subprocess.PIPE,
             **options,
         )
-        return RunResult(cp.returncode, cp.stdout, cp.stderr)
+        return RunResult(cp.returncode, cp.stdout, cp.stderr, print_result)
 
 
 @pytest.fixture
@@ -268,5 +285,6 @@ def script_cwd(tmpdir):
 
 
 @pytest.fixture
-def script_runner(script_cwd, script_launch_mode):
-    return ScriptRunner(script_launch_mode, script_cwd)
+def script_runner(request, script_cwd, script_launch_mode):
+    print_result = not request.config.getoption("--hide-run-results")
+    return ScriptRunner(script_launch_mode, script_cwd, print_result)
