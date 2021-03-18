@@ -99,6 +99,25 @@ command line option that in turn overrides the configuration setting. All three
 can take three possible values: "inprocess", "subprocess", and "both" (which
 will cause the test to be run twice: in in-process and in subprocess modes).
 
+Interaction with mocking
+------------------------
+
+It is possible to mock objects and functions inside of console scripts when
+they are run using `pytest-console-scripts` but only in inprocess mode. When
+the script is run in subprocess mode, it is executed by a separate Python
+interpreter and the test can't mock anything inside of it.
+
+Another limitation of mocking is that with simple Python scripts that are not
+installed via [`console_scripts` entry point][14] mocking of objects inside of
+the main script will not work. The reason for that is that when we run
+`myscript.py` with `$ python myscript.py` the script gets imported into
+`__main__` namespace instead of `myscript` namespace. Our patching of
+`myscript.myfunction` will have no effect on what the code in `__main__`
+namespace sees when it's calling `myfunction` defined in the same file.
+
+See [this stackoverflow answer](https://stackoverflow.com/a/66693954/1595738)
+for some ideas of how to get around this.
+
 Suppressing the printing of script run results
 ----------------------------------------------
 
@@ -183,3 +202,4 @@ with [@hackebrot][5]'s [Cookiecutter-pytest-plugin][6] template.
 [11]: https://docs.python.org/3/library/venv.html
 [12]: https://docs.pytest.org/en/stable/capture.html
 [13]: https://docs.pytest.org/en/stable/capture.html#setting-capturing-methods-or-disabling-capturing
+[14]: https://python-packaging.readthedocs.io/en/latest/command-line-scripts.html#the-console-scripts-entry-point
