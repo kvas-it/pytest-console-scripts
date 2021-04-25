@@ -262,7 +262,7 @@ class ScriptRunner(object):
         cmd_args = [command] + list(arguments)
         script_path = self._locate_script(command, **options)
         if _is_nonexecutable_python_file(script_path):
-            cmd_args = ['python'] + cmd_args
+            cmd_args = [sys.executable or 'python'] + cmd_args
 
         cp = subprocess.run(
             cmd_args,
