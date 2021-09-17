@@ -187,8 +187,11 @@ class ScriptRunner(object):
         entry_points = list(pkg_resources.iter_entry_points('console_scripts',
                                                             command))
         if entry_points:
-            return entry_points[0].load()
+            def console_script():
+                s = entry_points[0].load()
+                return s()
 
+            return console_script
         script_path = self._locate_script(command, **options)
 
         def exec_script():
