@@ -2,9 +2,11 @@
 
 import io
 import os
+from unittest import mock
 
 import pytest
 
+from mock_entry_point import MockEntryPoint
 
 @pytest.fixture(params=['inprocess', 'subprocess'])
 def launch_mode(request):
@@ -270,3 +272,14 @@ def test_script(script_runner):
     assert result.success
     assert 'the answer is 42' not in result.stdout
     assert 'Running console script' not in result.stdout
+
+
+@mock.patch('pkg_resources.iter_entry_points',
+            mock.MagicMock(return_value=[MockEntryPoint("mock_console_script")]))
+@pytest.mark.script_launch_mode('inprocess')
+def test_global_logging(console_script, script_runner):
+    """Load global values when executing from pkg_resources"""
+    result = script_runner.run(str(console_script))
+    assert result.success
+    assert 'INFO:mock_console_script:INFO\n' in result.stderr
+    assert 'DEBUG\n' not in result.stderr
