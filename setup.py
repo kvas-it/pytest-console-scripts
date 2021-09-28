@@ -22,7 +22,6 @@ setup(
     long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=4.0.0', 'mock>=2.0.0'],
-    setup_requires=['setuptools_scm<6'],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Framework :: Pytest',
