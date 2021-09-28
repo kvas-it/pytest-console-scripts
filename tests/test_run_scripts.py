@@ -1,12 +1,13 @@
 """Test running of scripts with various modes and options."""
 
+import importlib
 import io
 import os
+import sys
 from unittest import mock
 
 import pytest
 
-from mock_entry_point import MockEntryPoint
 
 @pytest.fixture(params=['inprocess', 'subprocess'])
 def launch_mode(request):
@@ -274,12 +275,44 @@ def test_script(script_runner):
     assert 'Running console script' not in result.stdout
 
 
-@mock.patch('pkg_resources.iter_entry_points',
-            mock.MagicMock(return_value=[MockEntryPoint("mock_console_script")]))
+class MockEntryPoint:
+    def __init__(self, exec_path):
+        self.exec_path = exec_path
+        self.module = None
+
+    def load(self):
+        base, module = os.path.split(self.exec_path)
+        module_name, _ = os.path.splitext(module)
+        sys.path.append(base)
+        self.module = importlib.import_module(module_name)
+        sys.path.pop(-1)
+        return self.module.run
+
+
 @pytest.mark.script_launch_mode('inprocess')
-def test_global_logging(console_script, script_runner):
+def test_global_logging(tmpdir, console_script, script_runner):
     """Load global values when executing from pkg_resources"""
-    result = script_runner.run(str(console_script))
-    assert result.success
-    assert 'INFO:mock_console_script:INFO\n' in result.stderr
-    assert 'DEBUG\n' not in result.stderr
+    test = tmpdir.join('test_entry_point.py')
+    test.write(
+        """
+import logging
+
+logging.basicConfig(level=logging.INFO)
+LOGGER = logging.getLogger(__name__)
+
+
+def run():
+    LOGGER.debug('DEBUG')
+    LOGGER.info('INFO')
+    LOGGER.warning('WARNING')
+        """
+    )
+
+    with mock.patch(
+        'pkg_resources.iter_entry_points',
+        mock.MagicMock(return_value=[MockEntryPoint(str(test))]),
+    ):
+        result = script_runner.run(str(console_script))
+        assert result.success
+        assert 'INFO:test_entry_point:INFO\n' in result.stderr
+        assert 'DEBUG\n' not in result.stderr
