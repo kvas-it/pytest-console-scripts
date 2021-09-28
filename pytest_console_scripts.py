@@ -190,8 +190,8 @@ class ScriptRunner(object):
             def console_script():
                 s = entry_points[0].load()
                 return s()
-
             return console_script
+
         script_path = self._locate_script(command, **options)
 
         def exec_script():
