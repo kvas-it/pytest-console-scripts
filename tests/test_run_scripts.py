@@ -91,10 +91,15 @@ def test_return_None(script_runner):
     # function is easy_install so we use it here.
 
     try:
-        result = script_runner.run('easy_install', '-h')
+        path = script_runner._locate_script('easy_install')
+        if os.path.join('.pyenv', 'shims') in path:
+            # We have a shell wrapper from pyenv instead of real easy_install.
+            return
     except FileNotFoundError:
-        # No easy install. Just skip.
+        # No easy_install. We skip the test.
         return
+
+    result = script_runner.run('easy_install', '-h')
     assert result.success
     assert '--verbose' in result.stdout
 
