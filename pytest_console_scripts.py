@@ -113,9 +113,12 @@ class RunResult(object):
         self.stdout = stdout
         self.stderr = stderr
         if print_result:
-            print('# Script return code:', returncode)
-            print('# Script stdout:', stdout, sep='\n')
-            print('# Script stderr:', stderr, sep='\n')
+            self.print()
+
+    def print(self):
+        print('# Script return code:', self.returncode)
+        print('# Script stdout:', self.stdout, sep='\n')
+        print('# Script stderr:', self.stderr, sep='\n')
 
 
 class ScriptRunner(object):
