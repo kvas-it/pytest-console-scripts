@@ -138,14 +138,18 @@ to disable the printing of script run results:
 
 It's also possible to disable it just for one script run:
 
-    ret = script_runner.run('foobar', print_result=False)
+    result = script_runner.run('foobar', print_result=False)
 
 When printing of script run results is disabled, script output won't be
-visisble even when the test fails. Unfortunately there's no easy way to print
-it only if the test fails because by the time a script run completes we don't
-yet know whether the test will fail or not. In any case, with this option and
-capturing control we can configure what output gets displayed so it should be
-possible to get to the bottom of things.
+visisble even when the test fails. Unfortunately there's no automatic way to
+print it only if the test fails because by the time a script run completes we
+don't know whether the test will fail or not. It's possible to do it manually
+from the test by using:
+
+    result.print()
+
+This, combined with `--hide-run-results` or `print_result=False` can be used to
+only print interesting run results when capturing is off.
 
 Package installation and testing during development
 ---------------------------------------------------
