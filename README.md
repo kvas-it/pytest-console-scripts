@@ -14,7 +14,7 @@ same) when run by a fresh interpreter.
 Requirements
 ------------
 
-- Python 3.5+, or PyPy3,
+- Python 3.6+, or PyPy3,
 - Pytest 4.0 or newer.
 
 Installation
