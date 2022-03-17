@@ -21,7 +21,7 @@ setup(
     long_description=read('README.md'),
     long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
-    install_requires=['pytest>=4.0.0', 'mock>=2.0.0'],
+    install_requires=['pytest>=4.0.0'],
     python_requires='>=3.6',
     setup_requires=['setuptools-scm'],
     classifiers=[
