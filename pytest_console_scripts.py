@@ -9,17 +9,10 @@ import subprocess
 import sys
 import traceback
 
-import mock
+from unittest import mock
 import pytest
 
-if sys.version_info.major == 2:
-    # We can't use io.StringIO for mocking stdout/stderr in Python 2
-    # because printing byte strings to it triggers unicode errors and
-    # there's code in stdlib that does that (e.g. traceback module).
-    import StringIO
-    StreamMock = StringIO.StringIO
-else:
-    StreamMock = io.StringIO
+StreamMock = io.StringIO
 
 
 def pytest_addoption(parser):
