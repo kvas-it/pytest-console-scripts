@@ -141,7 +141,7 @@ It's also possible to disable it just for one script run:
     result = script_runner.run('foobar', print_result=False)
 
 When printing of script run results is disabled, script output won't be
-visisble even when the test fails. Unfortunately there's no automatic way to
+visible even when the test fails. Unfortunately there's no automatic way to
 print it only if the test fails because by the time a script run completes we
 don't know whether the test will fail or not. It's possible to do it manually
 from the test by using:
