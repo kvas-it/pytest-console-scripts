@@ -22,7 +22,7 @@ setup(
     long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=4.0.0'],
-    python_requires='>=3.6',
+    python_requires='>=3.7',
     setup_requires=['setuptools-scm'],
     classifiers=[
         'Development Status :: 4 - Beta',
@@ -31,7 +31,6 @@ setup(
         'Topic :: Software Development :: Testing',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
