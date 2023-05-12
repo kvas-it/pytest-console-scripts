@@ -22,7 +22,9 @@ Installation
 
 You can install "pytest-console-scripts" via [pip][2] from [PyPI][3]:
 
-    $ pip install pytest-console-scripts
+```sh
+$ pip install pytest-console-scripts
+```
 
 Normally you would add it as a test dependency in `tox.ini` (see [tox
 documentation][9]).
@@ -40,22 +42,26 @@ no benefit in using `pytest-console-scripts` for this, you should just use
 Here's an example with `console_scripts` entry point. Imagine we have a python
 package `foo` with the following `setup.py`:
 
-    setup(
-        name='foo',
-        version='0.0.1',
-        py_modules=['foo'],
-        entry_points={
-            'console_scripts': ['foobar=foo:bar']
-        },
-    )
+```py
+setup(
+    name='foo',
+    version='0.0.1',
+    py_modules=['foo'],
+    entry_points={
+        'console_scripts': ['foobar=foo:bar']
+    },
+)
+```
 
 We could use pytest-console-scripts to test the `foobar` script:
 
-    def test_foo_bar(script_runner):
-        ret = script_runner.run('foobar', '--version')
-        assert ret.success
-        assert ret.stdout == '3.2.1\n'
-        assert ret.stderr == ''
+```py
+def test_foo_bar(script_runner):
+    ret = script_runner.run('foobar', '--version')
+    assert ret.success
+    assert ret.stdout == '3.2.1\n'
+    assert ret.stderr == ''
+```
 
 This would use the `script_runner` fixture provided by the plugin to
 run the script and capture its output.
@@ -80,19 +86,25 @@ subprocess mode to simulate real invocation more closely. There are several
 ways to do this. We can configure it via pytest configuration (for example in
 `tox.ini`):
 
-     [pytest]
-     script_launch_mode = subprocess
+```ini
+[pytest]
+script_launch_mode = subprocess
+```
 
 We can give a command line option to pytest (this will override the
 configuration file):
 
-    $ pytest --script-launch-mode=subprocess test_foobar.py
+```sh
+$ pytest --script-launch-mode=subprocess test_foobar.py
+```
 
 We can also mark individual tests to run in a specific mode:
 
-    @pytest.mark.script_launch_mode('subprocess')
-    def test_foobar(script_runner):
-        ...
+```py
+@pytest.mark.script_launch_mode('subprocess')
+def test_foobar(script_runner):
+    ...
+```
 
 Between these three methods the marking of the tests has priority before the
 command line option that in turn overrides the configuration setting. All three
@@ -134,11 +146,15 @@ results will be printed out and this might make it harder to inspect the other
 output of the tests. To deal with this, `pytest-console-scripts` has an option
 to disable the printing of script run results:
 
-    $ pytest --hide-run-results test_foobar.py
+```sh
+$ pytest --hide-run-results test_foobar.py
+```
 
 It's also possible to disable it just for one script run:
 
-    result = script_runner.run('foobar', print_result=False)
+```py
+result = script_runner.run('foobar', print_result=False)
+```
 
 When printing of script run results is disabled, script output won't be
 visible even when the test fails. Unfortunately there's no automatic way to
@@ -146,7 +162,9 @@ print it only if the test fails because by the time a script run completes we
 don't know whether the test will fail or not. It's possible to do it manually
 from the test by using:
 
-    result.print()
+```py
+result.print()
+```
 
 This, combined with `--hide-run-results` or `print_result=False` can be used to
 only print interesting run results when capturing is off.
