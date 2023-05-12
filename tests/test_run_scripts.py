@@ -118,6 +118,20 @@ sys.exit(None)
     assert 'Foo' in result.stdout
 
 
+@pytest.mark.script_launch_mode('inprocess')
+def test_return_code_uncommon(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    """Check uncommon return codes."""
+    console_script.write_text(
+        """
+import sys
+sys.exit(2)
+"""
+    )
+    assert script_runner.run(str(console_script)).returncode == 2
+
+
 @pytest.mark.script_launch_mode('both')
 def test_abnormal_exit(
     console_script: Path, script_runner: ScriptRunner
