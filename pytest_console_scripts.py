@@ -1,21 +1,23 @@
-from __future__ import unicode_literals, print_function
+from __future__ import annotations
 
 import io
 import logging
 import os
-import pkg_resources
 import shutil
 import subprocess
 import sys
 import traceback
-
+from pathlib import Path
+from typing import Any, Callable
 from unittest import mock
+
+import pkg_resources
 import pytest
 
 StreamMock = io.StringIO
 
 
-def pytest_addoption(parser):
+def pytest_addoption(parser: pytest.Parser) -> None:
     group = parser.getgroup('console-scripts')
     group.addoption(
         '--script-launch-mode',
@@ -39,7 +41,7 @@ def pytest_addoption(parser):
     )
 
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         'markers',
         'script_launch_mode: how to run python scripts under test '
@@ -47,22 +49,24 @@ def pytest_configure(config):
     )
 
 
-def _get_mark_mode(metafunc):
+def _get_mark_mode(metafunc: pytest.Metafunc) -> str | None:
     """Return launch mode as indicated by test function marker or None."""
     marker = metafunc.definition.get_closest_marker('script_launch_mode')
     if marker:
-        return marker.args[0]
+        return str(marker.args[0])
+    return None
 
 
-def _is_nonexecutable_python_file(command):
+def _is_nonexecutable_python_file(command: str | os.PathLike[str]) -> bool:
     """Check if `command` is a Python file with no executable mode set."""
-    mode = os.stat(command).st_mode
+    command = Path(command)
+    mode = command.stat().st_mode
     if mode & os.X_OK:
         return False
-    return os.path.splitext(command)[1] == '.py'
+    return command.suffix == '.py'
 
 
-def pytest_generate_tests(metafunc):
+def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Parametrize script_launch_mode fixture.
 
     Checks the configuration sources in this order:
@@ -94,13 +98,15 @@ def pytest_generate_tests(metafunc):
         metafunc.parametrize('script_launch_mode', ['inprocess', 'subprocess'],
                              indirect=True)
     else:
-        raise ValueError('Invalid script launch mode: {}'.format(mode))
+        raise ValueError(f'Invalid script launch mode: {mode}')
 
 
-class RunResult(object):
+class RunResult:
     """Result of running a script."""
 
-    def __init__(self, returncode, stdout, stderr, print_result):
+    def __init__(
+        self, returncode: int, stdout: str, stderr: str, print_result: bool
+    ) -> None:
         self.success = returncode == 0
         self.returncode = returncode
         self.stdout = stdout
@@ -108,25 +114,29 @@ class RunResult(object):
         if print_result:
             self.print()
 
-    def print(self):
+    def print(self) -> None:
         print('# Script return code:', self.returncode)
         print('# Script stdout:', self.stdout, sep='\n')
         print('# Script stderr:', self.stderr, sep='\n')
 
 
-class ScriptRunner(object):
+class ScriptRunner:
     """Fixture for running python scripts under test."""
 
-    def __init__(self, launch_mode, rootdir, print_result=True):
+    def __init__(
+        self, launch_mode: str,
+        rootdir: str | os.PathLike[str],
+        print_result: bool = True
+    ) -> None:
         assert launch_mode in {'inprocess', 'subprocess'}
         self.launch_mode = launch_mode
         self.print_result = print_result
         self.rootdir = rootdir
 
-    def __repr__(self):
-        return '<ScriptRunner {}>'.format(self.launch_mode)
+    def __repr__(self) -> str:
+        return f'<ScriptRunner {self.launch_mode}>'
 
-    def run(self, command, *arguments, **options):
+    def run(self, command: str, *arguments: str, **options: Any) -> RunResult:
         options.setdefault('print_result', self.print_result)
         if options['print_result']:
             print('# Running console script:', command, *arguments)
@@ -135,7 +145,7 @@ class ScriptRunner(object):
             return self.run_inprocess(command, *arguments, **options)
         return self.run_subprocess(command, *arguments, **options)
 
-    def _save_and_reset_logger(self):
+    def _save_and_reset_logger(self) -> dict[str, Any]:
         """Do a very basic reset of the root logger and return its config.
 
         This allows scripts to call logging.basicConfig(...) and have
@@ -155,14 +165,14 @@ class ScriptRunner(object):
         logger.setLevel(logging.NOTSET)
         return config
 
-    def _restore_logger(self, config):
+    def _restore_logger(self, config: dict[str, Any]) -> None:
         """Restore logger to previous configuration."""
         logger = logging.getLogger()
         logger.handlers = config['handlers']
         logger.disabled = config['disabled']
         logger.setLevel(config['level'])
 
-    def _locate_script(self, command, **options):
+    def _locate_script(self, command: str, **options: Any) -> str:
         """Locate script in PATH or in current directory."""
         script_path = shutil.which(
             command,
@@ -178,19 +188,21 @@ class ScriptRunner(object):
 
         raise FileNotFoundError('Cannot find ' + command)
 
-    def _load_script(self, command, **options):
+    def _load_script(
+        self, command: str, **options: Any
+    ) -> Callable[[], int | None]:
         """Load target script via entry points or compile/exec."""
         entry_points = list(pkg_resources.iter_entry_points('console_scripts',
                                                             command))
         if entry_points:
-            def console_script():
-                s = entry_points[0].load()
+            def console_script() -> int | None:
+                s: Callable[[], int | None] = entry_points[0].load()
                 return s()
             return console_script
 
         script_path = self._locate_script(command, **options)
 
-        def exec_script():
+        def exec_script() -> int:
             with open(script_path, 'rt', encoding='utf-8') as script:
                 compiled = compile(script.read(), str(script), 'exec', flags=0)
                 exec(compiled, {'__name__': '__main__'})
@@ -198,7 +210,9 @@ class ScriptRunner(object):
 
         return exec_script
 
-    def run_inprocess(self, command, *arguments, **options):
+    def run_inprocess(
+        self, command: str, *arguments: str, **options: Any
+    ) -> RunResult:
         cmdargs = [command] + list(arguments)
         script = self._load_script(command, **options)
         stdin = options.get('stdin', StreamMock())
@@ -213,7 +227,7 @@ class ScriptRunner(object):
 
         if 'env' in options:
             old_env = os.environ
-            os.environ = options.get('env')
+            os.environ = options['env']
 
         if 'cwd' in options:
             os.chdir(options['cwd'])
@@ -226,16 +240,18 @@ class ScriptRunner(object):
                 if returncode is None:
                     returncode = 0  # None also means success.
             except SystemExit as exc:
-                returncode = exc.code
-                if isinstance(returncode, str):
-                    stderr.write('{}\n'.format(exc))
+                if isinstance(exc.code, str):
+                    stderr.write(f'{exc}\n')
                     returncode = 1
-                elif returncode is None:
+                elif exc.code is None:
                     returncode = 0
+                else:
+                    returncode = exc.code
             except Exception:
                 returncode = 1
                 try:
                     et, ev, tb = sys.exc_info()
+                    assert tb
                     # Hide current frame from the stack trace.
                     traceback.print_exception(et, ev, tb.tb_next)
                 finally:
@@ -250,7 +266,9 @@ class ScriptRunner(object):
         return RunResult(returncode, stdout.getvalue(), stderr.getvalue(),
                          print_result)
 
-    def run_subprocess(self, command, *arguments, **options):
+    def run_subprocess(
+        self, command: str, *arguments: str, **options: Any
+    ) -> RunResult:
         stdin_input = None
         if 'stdin' in options:
             stdin_input = options.pop('stdin').read()
@@ -274,16 +292,20 @@ class ScriptRunner(object):
 
 
 @pytest.fixture
-def script_launch_mode(request):
-    return request.param
+def script_launch_mode(request: pytest.FixtureRequest) -> str:
+    return str(request.param)
 
 
 @pytest.fixture
-def script_cwd(tmpdir):
-    return tmpdir.mkdir('script-cwd')
+def script_cwd(tmp_path: Path) -> Path:
+    work_dir = tmp_path / 'script-cwd'
+    work_dir.mkdir()
+    return work_dir
 
 
 @pytest.fixture
-def script_runner(request, script_cwd, script_launch_mode):
+def script_runner(
+    request: pytest.FixtureRequest, script_cwd: Path, script_launch_mode: str
+) -> ScriptRunner:
     print_result = not request.config.getoption("--hide-run-results")
     return ScriptRunner(script_launch_mode, script_cwd, print_result)

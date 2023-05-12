@@ -1,11 +1,8 @@
-import os
+from pathlib import Path
 from setuptools import setup
 
-
-def read(fname):
-    file_path = os.path.join(os.path.dirname(__file__), fname)
-    with open(file_path, encoding='utf-8') as f:
-        return f.read()
+THIS_DIR = Path(__file__).parent
+README_TEXT = (THIS_DIR / 'README.md').read_text(encoding='utf-8')
 
 
 setup(
@@ -18,7 +15,7 @@ setup(
     license='MIT',
     url='https://github.com/kvas-it/pytest-console-scripts',
     description='Pytest plugin for testing console scripts',
-    long_description=read('README.md'),
+    long_description=README_TEXT,
     long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
     install_requires=['pytest>=4.0.0'],
