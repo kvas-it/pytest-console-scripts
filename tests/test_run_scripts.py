@@ -1,60 +1,79 @@
 """Test running of scripts with various modes and options."""
+from __future__ import annotations
 
 import importlib
 import io
 import os
 import sys
+from pathlib import Path
+from types import ModuleType
+from typing import Any
 from unittest import mock
 
 import pytest
 
+from pytest_console_scripts import ScriptRunner
+
 
 @pytest.fixture(params=['inprocess', 'subprocess'])
-def launch_mode(request):
+def launch_mode(request: pytest.FixtureRequest) -> str:
     """Launch mode: inprocess|subprocess."""
-    return request.param
+    return str(request.param)
 
 
 @pytest.fixture()
-def console_script(tmpdir):
+def console_script(tmp_path: Path) -> Path:
     """Python script to use in tests."""
-    script = tmpdir.join('script.py')
-    script.write('#!/usr/bin/env python\nprint("foo")')
+    script = tmp_path / 'script.py'
+    script.write_text('#!/usr/bin/env python\nprint("foo")')
     return script
 
 
 @pytest.mark.script_launch_mode('both')
-def test_not_installed(console_script, script_runner):
+def test_not_installed(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
     result = script_runner.run(str(console_script))
     assert result.success
     assert result.stdout == 'foo\n'
     assert result.stderr == ''
 
 
+@pytest.mark.xfail(
+    sys.platform == "win32",
+    reason="Windows does not treat Python scripts as executables."
+)
 @pytest.mark.script_launch_mode('both')
-def test_elsewhere_in_the_path(console_script, script_runner):
+def test_elsewhere_in_the_path(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
     console_script.chmod(0o777)
-    env = {'PATH': str(console_script.dirpath() + ':' + os.environ['PATH'])}
-    result = script_runner.run(console_script.basename, env=env)
+    env = {'PATH': f"{console_script.parent}{os.pathsep}{os.environ['PATH']}"}
+    result = script_runner.run(console_script.name, env=env)
     assert result.success
     assert result.stdout == 'foo\n'
     assert result.stderr == ''
 
 
 @pytest.mark.script_launch_mode('both')
-def test_run_pytest(tmpdir, console_script, script_runner, launch_mode):
-    console_script.write('import os;print(os.getpid())')
-    test = tmpdir.join('test_{}.py'.format(launch_mode))
+def test_run_pytest(
+    tmp_path: Path,
+    console_script: Path,
+    script_runner: ScriptRunner,
+    launch_mode: str
+) -> None:
+    console_script.write_text('import os;print(os.getpid())')
+    test = tmp_path / f'test_{launch_mode}.py'
     compare = '==' if launch_mode == 'inprocess' else '!='
-    test.write(
-        """
+    test.write_text(
+        f"""
 import os
 def test_script(script_runner):
-    result = script_runner.run('{}')
+    result = script_runner.run(R'''{console_script}''')
     assert result.success
-    assert result.stdout {} str(os.getpid()) + '\\n'
+    assert result.stdout {compare} str(os.getpid()) + '\\n'
     assert result.stderr == ''
-        """.format(console_script, compare)
+        """
     )
 
     # Here we're testing two things:
@@ -79,7 +98,7 @@ def test_script(script_runner):
 
 
 @pytest.mark.script_launch_mode('inprocess')
-def test_return_None(script_runner):
+def test_return_None(script_runner: ScriptRunner) -> None:
     """Check that entry point function returning None is counted as success."""
 
     # Many console_scripts entry point functions return 0 on success but not
@@ -105,8 +124,10 @@ def test_return_None(script_runner):
 
 
 @pytest.mark.script_launch_mode('both')
-def test_abnormal_exit(console_script, script_runner):
-    console_script.write('import sys;sys.exit("boom")')
+def test_abnormal_exit(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    console_script.write_text('import sys;sys.exit("boom")')
     result = script_runner.run(str(console_script))
     assert not result.success
     assert result.stdout == ''
@@ -114,37 +135,43 @@ def test_abnormal_exit(console_script, script_runner):
 
 
 @pytest.mark.script_launch_mode('both')
-def test_exception(console_script, script_runner):
-    console_script.write('raise TypeError("boom")')
+def test_exception(console_script: Path, script_runner: ScriptRunner) -> None:
+    console_script.write_text('raise TypeError("boom")')
     result = script_runner.run(str(console_script))
     assert not result.success
     assert result.stdout == ''
     assert 'TypeError: boom' in result.stderr
 
 
-def test_cwd(console_script, script_runner, tmpdir):
+def test_cwd(
+    console_script: Path,
+    script_runner: ScriptRunner,
+    tmp_path: Path,
+) -> None:
     """Script starts in dir given by cwd arg and cwd changes are contained."""
-    dir1 = tmpdir.mkdir('dir1')
-    dir2 = tmpdir.mkdir('dir2')
-    console_script.write(
-        """
+    dir1 = tmp_path / 'dir1'
+    dir1.mkdir()
+    dir2 = tmp_path / 'dir2'
+    dir2.mkdir()
+    console_script.write_text(
+        f"""
 import os
 print(os.getcwd())
-os.chdir('{}')
+os.chdir(R'''{dir2}''')
 print(os.getcwd())
-        """.format(dir2)
+        """
     )
     mydir = os.getcwd()
     result = script_runner.run(str(console_script), cwd=str(dir1))
     assert result.success
-    assert result.stdout == '{}\n{}\n'.format(dir1, dir2)
+    assert result.stdout == f'{dir1}\n{dir2}\n'
     assert os.getcwd() == mydir
 
 
 @pytest.mark.script_launch_mode('both')
-def test_env(console_script, script_runner):
+def test_env(console_script: Path, script_runner: ScriptRunner) -> None:
     """Script receives environment and env changes don't escape to test."""
-    console_script.write(
+    console_script.write_text(
         """
 import os
 print(os.environ['FOO'])
@@ -158,8 +185,8 @@ os.environ['FOO'] = 'baz'
 
 
 @pytest.mark.script_launch_mode('both')
-def test_stdin(console_script, script_runner):
-    console_script.write(
+def test_stdin(console_script: Path, script_runner: ScriptRunner) -> None:
+    console_script.write_text(
         """
 import sys
 for line in sys.stdin:
@@ -174,9 +201,9 @@ for line in sys.stdin:
     assert result.stderr == 'error says foo\nerror says bar'
 
 
-def test_logging(console_script, script_runner):
+def test_logging(console_script: Path, script_runner: ScriptRunner) -> None:
     """Test that the script can perform logging initialization."""
-    console_script.write(
+    console_script.write_text(
         """
 import logging, sys
 logging.basicConfig(stream=sys.stderr, level=logging.INFO)
@@ -190,17 +217,22 @@ logging.info('shown')
 
 
 @pytest.mark.parametrize('fail', [True, False])
-def test_print_stdio_on_error(console_script, script_runner, tmpdir, fail,
-                              launch_mode):
+def test_print_stdio_on_error(
+    console_script: Path,
+    script_runner: ScriptRunner,
+    tmp_path: Path,
+    fail: bool,
+    launch_mode: str,
+) -> None:
     """Output of the script is printed when the test fails."""
-    console_script.write('print("12345")\nraise Exception("54321")')
-    test = tmpdir.join('test_{}_{}.py'.format(fail, launch_mode))
-    test.write(
-        """
+    console_script.write_text('print("12345")\nraise Exception("54321")')
+    test = tmp_path / f'test_{fail}_{launch_mode}.py'
+    test.write_text(
+        f"""
 def test_fail(script_runner):
-    ret = script_runner.run('{}', 'arg')
-    assert ret.success is {}
-        """.format(console_script, fail)
+    ret = script_runner.run(R'''{console_script}''', 'arg')
+    assert ret.success is {fail}
+        """
     )
     result = script_runner.run(
         'pytest',
@@ -209,7 +241,7 @@ def test_fail(script_runner):
     )
     assert result.success != fail
     if fail:
-        assert ('# Running console script: {} arg\n'.format(console_script)
+        assert (f'# Running console script: {console_script} arg\n'
                 in result.stdout)
         assert '# Script return code: 1\n' in result.stdout
         assert '# Script stdout:\n12345\n' in result.stdout
@@ -222,7 +254,11 @@ def test_fail(script_runner):
 
 
 @pytest.mark.script_launch_mode('inprocess')
-def test_mocking(console_script, script_runner, monkeypatch):
+def test_mocking(
+    console_script: Path,
+    script_runner: ScriptRunner,
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
     """Test mocking in of console scripts (in-process mode only).
 
     Note: we can't mock objects in the script itself because it will not be
@@ -230,7 +266,7 @@ def test_mocking(console_script, script_runner, monkeypatch):
     that the script imports.
 
     """
-    console_script.write(
+    console_script.write_text(
         """
 import os
 print(os.path.basename('foo'))
@@ -242,18 +278,20 @@ print(os.path.basename('foo'))
     assert result.stdout == 'bar\n'
 
 
-def test_hide_run_result_arg(tmpdir, console_script, script_runner):
+def test_hide_run_result_arg(
+    tmp_path: Path, console_script: Path, script_runner: ScriptRunner
+) -> None:
     """Disable printing of the RunResult to stdout with print_result=False."""
-    console_script.write('print("the answer is 42")')
-    test = tmpdir.join('test_hrra.py')
-    test.write(
-        """
+    console_script.write_text('print("the answer is 42")')
+    test = tmp_path / 'test_hrra.py'
+    test.write_text(
+        f"""
 import pytest
 
 @pytest.mark.script_launch_mode('both')
 def test_script(script_runner):
-    script_runner.run('{}', print_result=False)
-        """.format(console_script)
+    script_runner.run(R'''{console_script}''', print_result=False)
+        """
     )
     result = script_runner.run('pytest', '-s', str(test))
     assert result.success
@@ -261,18 +299,20 @@ def test_script(script_runner):
     assert 'Running console script' not in result.stdout
 
 
-def test_hide_run_result_opt(tmpdir, console_script, script_runner):
+def test_hide_run_result_opt(
+    tmp_path: Path, console_script: Path, script_runner: ScriptRunner
+) -> None:
     """Disable printing of the RunResult to stdout with print_result=False."""
-    console_script.write('print("the answer is 42")')
-    test = tmpdir.join('test_hrro.py')
-    test.write(
-        """
+    console_script.write_text('print("the answer is 42")')
+    test = tmp_path / 'test_hrro.py'
+    test.write_text(
+        f"""
 import pytest
 
 @pytest.mark.script_launch_mode('both')
 def test_script(script_runner):
-    script_runner.run('{}')
-        """.format(console_script)
+    script_runner.run(R'''{console_script}''')
+        """
     )
     result = script_runner.run('pytest', '-s', '--hide-run-results', str(test))
     assert result.success
@@ -281,11 +321,12 @@ def test_script(script_runner):
 
 
 class MockEntryPoint:
-    def __init__(self, exec_path):
-        self.exec_path = exec_path
-        self.module = None
+    module: ModuleType
 
-    def load(self):
+    def __init__(self, exec_path: str | Path):
+        self.exec_path = exec_path
+
+    def load(self) -> Any:
         base, module = os.path.split(self.exec_path)
         module_name, _ = os.path.splitext(module)
         sys.path.append(base)
@@ -295,10 +336,12 @@ class MockEntryPoint:
 
 
 @pytest.mark.script_launch_mode('inprocess')
-def test_global_logging(tmpdir, console_script, script_runner):
+def test_global_logging(
+    tmp_path: Path, console_script: Path, script_runner: ScriptRunner
+) -> None:
     """Load global values when executing from pkg_resources"""
-    test = tmpdir.join('test_entry_point.py')
-    test.write(
+    test = tmp_path / 'test_entry_point.py'
+    test.write_text(
         """
 import logging
 
@@ -306,7 +349,7 @@ logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
 
 
-def run():
+def run() -> None:
     LOGGER.debug('DEBUG')
     LOGGER.info('INFO')
     LOGGER.warning('WARNING')
