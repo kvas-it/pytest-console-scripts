@@ -351,7 +351,7 @@ class MockEntryPoint:
 def test_global_logging(
     tmp_path: Path, console_script: Path, script_runner: ScriptRunner
 ) -> None:
-    """Load global values when executing from pkg_resources"""
+    """Load global values when executing from importlib.metadata"""
     test = tmp_path / 'test_entry_point.py'
     test.write_text(
         """
@@ -368,8 +368,13 @@ def run() -> None:
         """
     )
 
+    if sys.version_info < (3, 10):
+        patched_func = 'importlib_metadata.entry_points'
+    else:
+        patched_func = 'importlib.metadata.entry_points'
+
     with mock.patch(
-        'pkg_resources.iter_entry_points',
+        patched_func,
         mock.MagicMock(return_value=[MockEntryPoint(str(test))]),
     ):
         result = script_runner.run(str(console_script))
