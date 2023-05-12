@@ -98,29 +98,24 @@ def test_script(script_runner):
 
 
 @pytest.mark.script_launch_mode('inprocess')
-def test_return_None(script_runner: ScriptRunner) -> None:
+def test_return_None(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
     """Check that entry point function returning None is counted as success."""
-
     # Many console_scripts entry point functions return 0 on success but not
     # all of them do. Returning `None` is also allowed and would be translated
     # to return code 0 when run normally via wrapper. This test checks that we
     # handle this case properly in inprocess mode.
-    #
-    # One commonly available script that returns None from the entry point
-    # function is easy_install so we use it here.
-
-    try:
-        path = script_runner._locate_script('easy_install')
-        if os.path.join('.pyenv', 'shims') in path:
-            # We have a shell wrapper from pyenv instead of real easy_install.
-            return
-    except FileNotFoundError:
-        # No easy_install. We skip the test.
-        return
-
-    result = script_runner.run('easy_install', '-h')
+    console_script.write_text(
+        """
+import sys
+print("Foo")
+sys.exit(None)
+"""
+    )
+    result = script_runner.run(str(console_script))
     assert result.success
-    assert '--verbose' in result.stdout
+    assert 'Foo' in result.stdout
 
 
 @pytest.mark.script_launch_mode('both')
