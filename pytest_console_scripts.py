@@ -281,6 +281,13 @@ class ScriptRunner:
         if _is_nonexecutable_python_file(script_path):
             cmd_args = [sys.executable or 'python'] + cmd_args
 
+        env: dict[str, str] | None = options.get("env")
+        # Prevent _Py_HashRandomization_Init failure on Windows
+        if env is not None and "SYSTEMROOT" in os.environ:
+            env = env.copy()
+            env.setdefault("SYSTEMROOT", os.environ["SYSTEMROOT"])
+            options["env"] = env
+
         cp = subprocess.run(
             cmd_args,
             input=stdin_input,
