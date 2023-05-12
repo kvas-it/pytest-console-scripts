@@ -11,8 +11,12 @@ from pathlib import Path
 from typing import Any, Callable
 from unittest import mock
 
-import pkg_resources
 import pytest
+
+if sys.version_info < (3, 10):
+    import importlib_metadata
+else:
+    import importlib.metadata as importlib_metadata
 
 StreamMock = io.StringIO
 
@@ -192,8 +196,11 @@ class ScriptRunner:
         self, command: str, **options: Any
     ) -> Callable[[], int | None]:
         """Load target script via entry points or compile/exec."""
-        entry_points = list(pkg_resources.iter_entry_points('console_scripts',
-                                                            command))
+        entry_points = tuple(
+            importlib_metadata.entry_points(
+                group='console_scripts', name=command
+            )
+        )
         if entry_points:
             def console_script() -> int | None:
                 s: Callable[[], int | None] = entry_points[0].load()

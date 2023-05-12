@@ -18,7 +18,10 @@ setup(
     long_description=README_TEXT,
     long_description_content_type='text/markdown',
     py_modules=['pytest_console_scripts'],
-    install_requires=['pytest>=4.0.0'],
+    install_requires=[
+        'pytest >=4.0.0',
+        "importlib_metadata >=3.6; python_version < '3.10'",
+    ],
     python_requires='>=3.7',
     setup_requires=['setuptools-scm'],
     classifiers=[
