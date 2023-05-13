@@ -48,7 +48,8 @@ def test_elsewhere_in_the_path(
     console_script: Path, script_runner: ScriptRunner
 ) -> None:
     console_script.chmod(0o777)
-    env = {'PATH': f"{console_script.parent}{os.pathsep}{os.environ['PATH']}"}
+    env = os.environ.copy()
+    env["PATH"] = f"{console_script.parent}{os.pathsep}{env['PATH']}"
     result = script_runner.run(console_script.name, env=env)
     assert result.success
     assert result.stdout == 'foo\n'
@@ -187,7 +188,9 @@ print(os.environ['FOO'])
 os.environ['FOO'] = 'baz'
         """
     )
-    result = script_runner.run(str(console_script), env={'FOO': 'bar'})
+    env = os.environ.copy()
+    env['FOO'] = 'bar'
+    result = script_runner.run(str(console_script), env=env)
     assert result.success
     assert result.stdout == 'bar\n'
     assert 'FOO' not in os.environ
