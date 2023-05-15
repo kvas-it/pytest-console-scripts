@@ -2,9 +2,8 @@ name: Run the tests
 
 on:
   push:
-    branches:
-      - master
   pull_request:
+    types: [opened, reopened]
 
 jobs:
   build:
