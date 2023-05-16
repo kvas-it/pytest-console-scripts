@@ -6,6 +6,7 @@ import io
 import os
 import sys
 from pathlib import Path
+from subprocess import CalledProcessError
 from types import ModuleType
 from typing import Any
 from unittest import mock
@@ -381,3 +382,58 @@ def run() -> None:
         assert result.success
         assert 'INFO:test_entry_point:INFO\n' in result.stderr
         assert 'DEBUG\n' not in result.stderr
+
+
+@pytest.mark.script_launch_mode('both')
+def test_shell(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    console_script.chmod(0o777)
+    result = script_runner.run(
+        f"{console_script} --test", shell=True, check=True
+    )
+    assert result.stdout == 'foo\n'
+    assert result.stderr == ''
+    result = script_runner.run(
+        [str(console_script), "--test"], shell=True, check=True
+    )
+    assert result.stdout == 'foo\n'
+    assert result.stderr == ''
+
+
+@pytest.mark.script_launch_mode('both')
+def test_deprecated_args(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    if (
+        script_runner.launch_mode == "subprocess"
+        and sys.platform == "win32"
+        and sys.version_info < (3, 8)
+    ):
+        pytest.xfail("PathLike's might not be supported this far back")
+    console_script.write_text(
+        """
+import sys
+print(sys.argv[1:])
+        """
+    )
+    result = script_runner.run(console_script, 'A', 'B', check=True)
+    assert result.stdout == "['A', 'B']\n"
+    result = script_runner.run([console_script, 'C'], 'D', check=True)
+    assert result.stdout == "['C', 'D']\n"
+
+
+@pytest.mark.script_launch_mode('both')
+def test_check(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    console_script.write_text("import sys; sys.exit(1)")
+    with pytest.raises(CalledProcessError, match=".*non-zero exit status 1"):
+        script_runner.run(str(console_script), check=True)
+
+
+@pytest.mark.script_launch_mode('both')
+def test_ignore_universal_newlines(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    script_runner.run(str(console_script), check=True, universal_newlines=True)
