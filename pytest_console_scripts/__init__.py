@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import os
+import shlex
 import shutil
 import subprocess
 import sys
 import traceback
+import warnings
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterator, Sequence
 from unittest import mock
 
 import pytest
@@ -124,6 +127,89 @@ class RunResult:
         print('# Script stderr:', self.stderr, sep='\n')
 
 
+def _handle_command_args(
+    command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+    *args: str | os.PathLike[str],
+    shell: bool = False,
+) -> Sequence[str | os.PathLike[str]]:
+    """Return command arguments in a consistent list format.
+
+    If shell=True then this function tries to mimic local shell execution.
+    """
+    if shell:
+        if args or not isinstance(command, (str, os.PathLike)):
+            command = subprocess.list2cmdline(
+                str(arg)
+                for arg in _handle_command_args(command, *args, shell=False)
+            )
+        command = shlex.split(str(command), posix=os.name == "posix")
+        args = ()
+
+    if args:
+        warnings.warn(
+            "script_runner commands should be passed as a single sequence,"
+            " not as multiple arguments."
+            "\nReplace `script_runner.run(a, b, c)` calls with"
+            " `script_runner.run([a, b, c])`",
+            DeprecationWarning,
+        )
+        if not isinstance(command, (str, os.PathLike)):
+            return [*command, *args]
+        return [command, *args]
+    if isinstance(command, (str, os.PathLike)):
+        return [command]
+    return command
+
+
+@contextlib.contextmanager
+def _patch_environ(new_environ: dict[str, str] | None) -> Iterator[None]:
+    """Replace the environment for the duration of a context."""
+    if new_environ is None:
+        yield
+        return
+    old_environ = os.environ.copy()
+    os.environ.clear()
+    os.environ.update(new_environ)
+    yield
+    os.environ.clear()
+    os.environ.update(old_environ)
+
+
+@contextlib.contextmanager
+def _chdir_context(new_dir: str | os.PathLike[str] | None) -> Iterator[None]:
+    """Replace the current directory for the duration of a context."""
+    if new_dir is None:
+        yield
+        return
+    old_cwd = os.getcwd()
+    os.chdir(new_dir)
+    yield
+    os.chdir(old_cwd)
+
+
+@contextlib.contextmanager
+def _push_and_reset_logger() -> Iterator[None]:
+    """Do a very basic reset of the root logger and restore its config on exit.
+
+    This allows scripts to call logging.basicConfig(...) and have
+    it work as expected. It might not work for more sophisticated logging
+    setups but it's simple and covers the basic usage whereas implementing
+    a comprehensive fix is impossible in a compatible way.
+    """
+    logger = logging.getLogger()
+    old_handlers = logger.handlers
+    old_disabled = logger.disabled
+    old_level = logger.level
+    logger.handlers = []
+    logger.disabled = False
+    logger.setLevel(logging.NOTSET)
+    yield
+    # Restore logger to previous configuration
+    logger.handlers = old_handlers
+    logger.disabled = old_disabled
+    logger.setLevel(old_level)
+
+
 class ScriptRunner:
     """Fixture for running python scripts under test."""
 
@@ -140,74 +226,80 @@ class ScriptRunner:
     def __repr__(self) -> str:
         return f'<ScriptRunner {self.launch_mode}>'
 
-    def run(self, command: str, *arguments: str, **options: Any) -> RunResult:
-        options.setdefault('print_result', self.print_result)
-        if options['print_result']:
+    def run(
+        self,
+        command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+        *arguments: str | os.PathLike[str],
+        print_result: bool | None = None,
+        shell: bool = False,
+        cwd: str | os.PathLike[str] | None = None,
+        env: dict[str, str] | None = None,
+        stdin: io.IOBase | None = None,
+        check: bool = False,
+        **options: Any,
+    ) -> RunResult:
+        if print_result is None:
+            print_result = self.print_result
+
+        if print_result:
             print('# Running console script:', command, *arguments)
 
         if self.launch_mode == 'inprocess':
-            return self.run_inprocess(command, *arguments, **options)
-        return self.run_subprocess(command, *arguments, **options)
+            run_function = self.run_inprocess
+        else:
+            run_function = self.run_subprocess
+        return run_function(
+            command,
+            *arguments,
+            print_result=print_result,
+            shell=shell,
+            cwd=cwd,
+            env=env,
+            stdin=stdin,
+            check=check,
+            **options,
+        )
 
-    def _save_and_reset_logger(self) -> dict[str, Any]:
-        """Do a very basic reset of the root logger and return its config.
-
-        This allows scripts to call logging.basicConfig(...) and have
-        it work as expected. It might not work for more sophisticated logging
-        setups but it's simple and covers the basic usage whereas implementing
-        a comprehensive fix is impossible in a compatible way.
-
-        """
-        logger = logging.getLogger()
-        config = {
-            'level': logger.level,
-            'handlers': logger.handlers,
-            'disabled': logger.disabled,
-        }
-        logger.handlers = []
-        logger.disabled = False
-        logger.setLevel(logging.NOTSET)
-        return config
-
-    def _restore_logger(self, config: dict[str, Any]) -> None:
-        """Restore logger to previous configuration."""
-        logger = logging.getLogger()
-        logger.handlers = config['handlers']
-        logger.disabled = config['disabled']
-        logger.setLevel(config['level'])
-
-    def _locate_script(self, command: str, **options: Any) -> str:
+    @staticmethod
+    def _locate_script(
+        command: str | os.PathLike[str],
+        *,
+        cwd: str | os.PathLike[str] | None,
+        env: dict[str, str] | None,
+    ) -> Path:
         """Locate script in PATH or in current directory."""
         script_path = shutil.which(
             command,
-            path=options.get('env', {}).get('PATH', None),
+            path=env.get('PATH', None) if env is not None else None,
         )
         if script_path is not None:
-            return script_path
+            return Path(script_path)
 
-        cwd = options.get('cwd', os.getcwd())
-        script_path = os.path.join(cwd, command)
-        if os.path.exists(script_path):
-            return script_path
+        cwd = cwd if cwd is not None else os.getcwd()
+        return Path(cwd, command).resolve(strict=True)
 
-        raise FileNotFoundError('Cannot find ' + command)
-
+    @classmethod
     def _load_script(
-        self, command: str, **options: Any
+        cls,
+        command: str | os.PathLike[str],
+        *,
+        cwd: str | os.PathLike[str] | None,
+        env: dict[str, str] | None,
     ) -> Callable[[], int | None]:
         """Load target script via entry points or compile/exec."""
-        entry_points = tuple(
-            importlib_metadata.entry_points(
-                group='console_scripts', name=command
+        if isinstance(command, str):
+            entry_points = tuple(
+                importlib_metadata.entry_points(
+                    group='console_scripts', name=command
+                )
             )
-        )
-        if entry_points:
-            def console_script() -> int | None:
-                s: Callable[[], int | None] = entry_points[0].load()
-                return s()
-            return console_script
+            if entry_points:
+                def console_script() -> int | None:
+                    s: Callable[[], int | None] = entry_points[0].load()
+                    return s()
+                return console_script
 
-        script_path = self._locate_script(command, **options)
+        script_path = cls._locate_script(command, cwd=cwd, env=env)
 
         def exec_script() -> int:
             with open(script_path, 'rt', encoding='utf-8') as script:
@@ -217,41 +309,46 @@ class ScriptRunner:
 
         return exec_script
 
+    @classmethod
     def run_inprocess(
-        self, command: str, *arguments: str, **options: Any
+        cls,
+        command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+        *arguments: str | os.PathLike[str],
+        shell: bool = False,
+        cwd: str | os.PathLike[str] | None = None,
+        env: dict[str, str] | None = None,
+        print_result: bool = True,
+        stdin: io.IOBase | None = None,
+        check: bool = False,
+        **options: Any,
     ) -> RunResult:
-        cmdargs = [command] + list(arguments)
-        script = self._load_script(command, **options)
-        stdin = options.get('stdin', StreamMock())
-        stdout = StreamMock()
-        stderr = StreamMock()
-        stdin_patch = mock.patch('sys.stdin', new=stdin)
-        stdout_patch = mock.patch('sys.stdout', new=stdout)
-        stderr_patch = mock.patch('sys.stderr', new=stderr)
-        argv_patch = mock.patch('sys.argv', new=cmdargs)
-        saved_dir = os.getcwd()
-        logger_conf = self._save_and_reset_logger()
+        for key in options:
+            warnings.warn(
+                f"Keyword argument {key!r} was ignored."
+                "\nConsider using subprocess mode or raising an issue."
+            )
+        cmd_args = _handle_command_args(command, *arguments, shell=shell)
+        script = cls._load_script(cmd_args[0], cwd=cwd, env=env)
+        cmd_args = [str(cmd) for cmd in cmd_args]
+        stdin_stream = stdin if stdin is not None else StreamMock()
+        stdout_stream = StreamMock()
+        stderr_stream = StreamMock()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch('sys.stdin', new=stdin_stream))
+            stack.enter_context(contextlib.redirect_stdout(stdout_stream))
+            stack.enter_context(contextlib.redirect_stderr(stderr_stream))
+            stack.enter_context(mock.patch('sys.argv', new=cmd_args))
+            stack.enter_context(_push_and_reset_logger())
+            stack.enter_context(_patch_environ(env))
+            stack.enter_context(_chdir_context(cwd))
 
-        if 'env' in options:
-            old_env = os.environ
-            os.environ = options['env']
-
-        if 'cwd' in options:
-            os.chdir(options['cwd'])
-
-        print_result = options.pop('print_result')
-
-        with stdin_patch, stdout_patch, stderr_patch, argv_patch:
             try:
                 returncode = script()
-                if returncode is None:
-                    returncode = 0  # None also means success.
             except SystemExit as exc:
+                returncode = 1
                 if isinstance(exc.code, str):
-                    stderr.write(f'{exc}\n')
+                    stderr_stream.write(f'{exc}\n')
                     returncode = 1
-                elif exc.code is None:
-                    returncode = 0
                 else:
                     returncode = exc.code
             except Exception:
@@ -264,35 +361,63 @@ class ScriptRunner:
                 finally:
                     del tb
 
-        self._restore_logger(logger_conf)
-        os.chdir(saved_dir)
+        result = RunResult(
+            returncode or 0,  # None also means success
+            stdout_stream.getvalue(),
+            stderr_stream.getvalue(),
+            print_result,
+        )
 
-        if 'env' in options:
-            os.environ = old_env
+        if check and returncode:
+            raise subprocess.CalledProcessError(
+                returncode,
+                cmd_args,
+                result.stdout,
+                result.stderr,
+            )
 
-        return RunResult(returncode, stdout.getvalue(), stderr.getvalue(),
-                         print_result)
+        return result
 
+    @classmethod
     def run_subprocess(
-        self, command: str, *arguments: str, **options: Any
+        cls,
+        command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
+        *arguments: str | os.PathLike[str],
+        print_result: bool = True,
+        shell: bool = False,
+        cwd: str | os.PathLike[str] | None = None,
+        env: dict[str, str] | None = None,
+        stdin: io.IOBase | None = None,
+        check: bool = False,
+        **options: Any,
     ) -> RunResult:
-        stdin_input = None
-        if 'stdin' in options:
-            stdin_input = options.pop('stdin').read()
+        stdin_input: str | bytes | None = None
+        if stdin is not None:
+            stdin_input = stdin.read()
 
-        options.setdefault('universal_newlines', True)
-        print_result = options.pop('print_result')
+        if 'universal_newlines' in options:
+            del options['universal_newlines']
 
-        cmd_args = [command] + list(arguments)
-        script_path = self._locate_script(command, **options)
+        script_path = cls._locate_script(_handle_command_args(
+            command, *arguments, shell=shell)[0], cwd=cwd, env=env
+        )
+        if arguments:
+            command = _handle_command_args(command, *arguments, shell=shell)
+
         if _is_nonexecutable_python_file(script_path):
-            cmd_args = [sys.executable or 'python'] + cmd_args
+            command = _handle_command_args(command, shell=shell)
+            command = [sys.executable or 'python', *command]
 
         cp = subprocess.run(
-            cmd_args,
+            command,
             input=stdin_input,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            shell=shell,
+            cwd=cwd,
+            env=env,
+            check=check,
+            universal_newlines=True,
             **options,
         )
         return RunResult(cp.returncode, cp.stdout, cp.stderr, print_result)

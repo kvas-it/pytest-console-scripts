@@ -57,10 +57,12 @@ We could use pytest-console-scripts to test the `foobar` script:
 
 ```py
 def test_foo_bar(script_runner):
-    ret = script_runner.run('foobar', '--version')
-    assert ret.success
-    assert ret.stdout == '3.2.1\n'
-    assert ret.stderr == ''
+    result = script_runner.run(['foobar', '--version'])
+    assert result.returncode == 0
+    assert result.stdout == '3.2.1\n'
+    assert result.stderr == ''
+
+    script_runner.run('foobar --version', shell=True, check=True)
 ```
 
 This would use the `script_runner` fixture provided by the plugin to
@@ -75,6 +77,9 @@ following keyword arguments can be used:
   environment.
 - `stdin` - a file-like object that will be piped to standard input of the
   script.
+- `check` - raises an exception if `returncode != 0`, defaults to False.
+- `shell` - mimic shell execution, this should work well for simple cases,
+  defaults to False.
 
 Type-hinting is also supported.
 You may type-hint the fixture with the following code:
