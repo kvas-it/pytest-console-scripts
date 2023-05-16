@@ -17,7 +17,8 @@ setup(
     description='Pytest plugin for testing console scripts',
     long_description=README_TEXT,
     long_description_content_type='text/markdown',
-    py_modules=['pytest_console_scripts'],
+    packages=['pytest_console_scripts'],
+    package_data={'pytest_console_scripts': ['py.typed']},
     install_requires=[
         'pytest >=4.0.0',
         "importlib_metadata >=3.6; python_version < '3.10'",
