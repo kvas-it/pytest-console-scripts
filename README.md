@@ -76,6 +76,16 @@ following keyword arguments can be used:
 - `stdin` - a file-like object that will be piped to standard input of the
   script.
 
+Type-hinting is also supported.
+You may type-hint the fixture with the following code:
+
+```py
+from pytest_console_scripts import ScriptRunner
+
+def test_foo_bar(script_runner: ScriptRunner) -> None:
+    ...
+```
+
 Configuring script execution mode
 ---------------------------------
 
