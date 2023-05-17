@@ -11,7 +11,7 @@ import sys
 import traceback
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterator, Sequence
+from typing import Any, Callable, Iterator, Sequence, Union
 from unittest import mock
 
 import pytest
@@ -20,6 +20,12 @@ if sys.version_info < (3, 10):
     import importlib_metadata
 else:
     import importlib.metadata as importlib_metadata
+
+_StrOrPath = Union[str, os.PathLike]
+"""A command line argument type as a str or path."""
+
+_Command = Union[_StrOrPath, Sequence[_StrOrPath]]
+"""A command-like type compatible with subprocess.run."""
 
 StreamMock = io.StringIO
 
@@ -64,7 +70,7 @@ def _get_mark_mode(metafunc: pytest.Metafunc) -> str | None:
     return None
 
 
-def _is_nonexecutable_python_file(command: str | os.PathLike[str]) -> bool:
+def _is_nonexecutable_python_file(command: _StrOrPath) -> bool:
     """Check if `command` is a Python file with no executable mode set."""
     command = Path(command)
     mode = command.stat().st_mode
@@ -128,10 +134,10 @@ class RunResult:
 
 
 def _handle_command_args(
-    command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
-    *args: str | os.PathLike[str],
+    command: _Command,
+    *args: _StrOrPath,
     shell: bool = False,
-) -> Sequence[str | os.PathLike[str]]:
+) -> Sequence[_StrOrPath]:
     """Return command arguments in a consistent list format.
 
     If shell=True then this function tries to mimic local shell execution.
@@ -176,7 +182,7 @@ def _patch_environ(new_environ: dict[str, str] | None) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def _chdir_context(new_dir: str | os.PathLike[str] | None) -> Iterator[None]:
+def _chdir_context(new_dir: _StrOrPath | None) -> Iterator[None]:
     """Replace the current directory for the duration of a context."""
     if new_dir is None:
         yield
@@ -215,7 +221,7 @@ class ScriptRunner:
 
     def __init__(
         self, launch_mode: str,
-        rootdir: str | os.PathLike[str],
+        rootdir: _StrOrPath,
         print_result: bool = True
     ) -> None:
         assert launch_mode in {'inprocess', 'subprocess'}
@@ -228,11 +234,11 @@ class ScriptRunner:
 
     def run(
         self,
-        command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
-        *arguments: str | os.PathLike[str],
+        command: _Command,
+        *arguments: _StrOrPath,
         print_result: bool | None = None,
         shell: bool = False,
-        cwd: str | os.PathLike[str] | None = None,
+        cwd: _StrOrPath | None = None,
         env: dict[str, str] | None = None,
         stdin: io.IOBase | None = None,
         check: bool = False,
@@ -262,9 +268,9 @@ class ScriptRunner:
 
     @staticmethod
     def _locate_script(
-        command: str | os.PathLike[str],
+        command: _StrOrPath,
         *,
-        cwd: str | os.PathLike[str] | None,
+        cwd: _StrOrPath | None,
         env: dict[str, str] | None,
     ) -> Path:
         """Locate script in PATH or in current directory."""
@@ -281,9 +287,9 @@ class ScriptRunner:
     @classmethod
     def _load_script(
         cls,
-        command: str | os.PathLike[str],
+        command: _StrOrPath,
         *,
-        cwd: str | os.PathLike[str] | None,
+        cwd: _StrOrPath | None,
         env: dict[str, str] | None,
     ) -> Callable[[], int | None]:
         """Load target script via entry points or compile/exec."""
@@ -312,10 +318,10 @@ class ScriptRunner:
     @classmethod
     def run_inprocess(
         cls,
-        command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
-        *arguments: str | os.PathLike[str],
+        command: _Command,
+        *arguments: _StrOrPath,
         shell: bool = False,
-        cwd: str | os.PathLike[str] | None = None,
+        cwd: _StrOrPath | None = None,
         env: dict[str, str] | None = None,
         print_result: bool = True,
         stdin: io.IOBase | None = None,
@@ -381,11 +387,11 @@ class ScriptRunner:
     @classmethod
     def run_subprocess(
         cls,
-        command: str | os.PathLike[str] | Sequence[str | os.PathLike[str]],
-        *arguments: str | os.PathLike[str],
+        command: _Command,
+        *arguments: _StrOrPath,
         print_result: bool = True,
         shell: bool = False,
-        cwd: str | os.PathLike[str] | None = None,
+        cwd: _StrOrPath | None = None,
         env: dict[str, str] | None = None,
         stdin: io.IOBase | None = None,
         check: bool = False,
