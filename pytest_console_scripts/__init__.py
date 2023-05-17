@@ -40,7 +40,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         dest='hide_run_results',
         default=False,
         help="don't print out script run results on failures or when "
-             "output capturing is disabled"
+             'output capturing is disabled'
     )
     parser.addini(
         'script_launch_mode',
@@ -142,15 +142,15 @@ def _handle_command_args(
                 str(arg)
                 for arg in _handle_command_args(command, *args, shell=False)
             )
-        command = shlex.split(str(command), posix=os.name == "posix")
+        command = shlex.split(str(command), posix=os.name == 'posix')
         args = ()
 
     if args:
         warnings.warn(
-            "script_runner commands should be passed as a single sequence,"
-            " not as multiple arguments."
-            "\nReplace `script_runner.run(a, b, c)` calls with"
-            " `script_runner.run([a, b, c])`",
+            'script_runner commands should be passed as a single sequence,'
+            ' not as multiple arguments.'
+            '\nReplace `script_runner.run(a, b, c)` calls with'
+            ' `script_runner.run([a, b, c])`',
             DeprecationWarning,
         )
         if not isinstance(command, (str, os.PathLike)):
@@ -324,8 +324,8 @@ class ScriptRunner:
     ) -> RunResult:
         for key in options:
             warnings.warn(
-                f"Keyword argument {key!r} was ignored."
-                "\nConsider using subprocess mode or raising an issue."
+                f'Keyword argument {key!r} was ignored.'
+                '\nConsider using subprocess mode or raising an issue.'
             )
         cmd_args = _handle_command_args(command, *arguments, shell=shell)
         script = cls._load_script(cmd_args[0], cwd=cwd, env=env)
@@ -437,5 +437,5 @@ def script_cwd(tmp_path: Path) -> Path:
 def script_runner(
     request: pytest.FixtureRequest, script_cwd: Path, script_launch_mode: str
 ) -> ScriptRunner:
-    print_result = not request.config.getoption("--hide-run-results")
+    print_result = not request.config.getoption('--hide-run-results')
     return ScriptRunner(script_launch_mode, script_cwd, print_result)

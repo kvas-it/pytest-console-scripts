@@ -406,8 +406,8 @@ def test_deprecated_args(
     console_script: Path, script_runner: ScriptRunner
 ) -> None:
     if (
-        script_runner.launch_mode == "subprocess"
-        and sys.platform == "win32"
+        script_runner.launch_mode == 'subprocess'
+        and sys.platform == 'win32'
         and sys.version_info < (3, 8)
     ):
         pytest.xfail("PathLike's might not be supported this far back")
@@ -427,8 +427,8 @@ print(sys.argv[1:])
 def test_check(
     console_script: Path, script_runner: ScriptRunner
 ) -> None:
-    console_script.write_text("import sys; sys.exit(1)")
-    with pytest.raises(CalledProcessError, match=".*non-zero exit status 1"):
+    console_script.write_text("""import sys; sys.exit(1)""")
+    with pytest.raises(CalledProcessError, match='.*non-zero exit status 1'):
         script_runner.run(str(console_script), check=True)
 
 
