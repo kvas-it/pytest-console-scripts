@@ -389,14 +389,12 @@ class ScriptRunner:
         env: dict[str, str] | None = None,
         stdin: io.IOBase | None = None,
         check: bool = False,
+        universal_newlines: bool = True,
         **options: Any,
     ) -> RunResult:
         stdin_input: str | bytes | None = None
         if stdin is not None:
             stdin_input = stdin.read()
-
-        if 'universal_newlines' in options:
-            del options['universal_newlines']
 
         script_path = cls._locate_script(_handle_command_args(
             command, *arguments, shell=shell)[0], cwd=cwd, env=env
@@ -417,7 +415,7 @@ class ScriptRunner:
             cwd=cwd,
             env=env,
             check=check,
-            universal_newlines=True,
+            universal_newlines=universal_newlines,
             **options,
         )
         return RunResult(cp.returncode, cp.stdout, cp.stderr, print_result)

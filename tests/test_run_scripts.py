@@ -436,4 +436,21 @@ def test_check(
 def test_ignore_universal_newlines(
     console_script: Path, script_runner: ScriptRunner
 ) -> None:
-    script_runner.run(str(console_script), check=True, universal_newlines=True)
+    result = script_runner.run(
+        str(console_script), check=True, universal_newlines=True
+    )
+    assert result.stdout == 'foo\n'
+    assert result.stderr == ''
+
+
+@pytest.mark.script_launch_mode('subprocess')
+def test_disable_universal_newlines(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    result = script_runner.run(
+        str(console_script), check=True, universal_newlines=False
+    )
+    assert isinstance(result.stdout, bytes)
+    assert isinstance(result.stderr, bytes)
+    assert result.stdout.strip() == b'foo'
+    assert result.stderr == b''
