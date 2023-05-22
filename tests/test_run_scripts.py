@@ -405,12 +405,6 @@ def test_shell(
 def test_deprecated_args(
     console_script: Path, script_runner: ScriptRunner
 ) -> None:
-    if (
-        script_runner.launch_mode == 'subprocess'
-        and sys.platform == 'win32'
-        and sys.version_info < (3, 8)
-    ):
-        pytest.xfail("PathLike's might not be supported this far back")
     console_script.write_text(
         """
 import sys

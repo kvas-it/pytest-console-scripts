@@ -412,15 +412,6 @@ class ScriptRunner:
             command = _handle_command_args(command, shell=shell)
             command = [sys.executable or 'python', *command]
 
-        if sys.version_info < (3, 8):
-            if isinstance(command, os.PathLike):
-                command = [command]
-            if not isinstance(command, str):
-                command = [
-                    str(Path(arg)) if isinstance(arg, os.PathLike) else arg
-                    for arg in command
-                ]
-
         cp = subprocess.run(
             command,
             input=stdin_input,
