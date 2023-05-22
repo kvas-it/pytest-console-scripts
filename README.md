@@ -1,6 +1,15 @@
 pytest-console-scripts
 ======================
 
+[![PyPI](https://img.shields.io/pypi/v/pytest-console-scripts)](https://pypi.org/project/pytest-console-scripts/)
+[![PyPI - License](https://img.shields.io/pypi/l/pytest-console-scripts)](https://github.com/kvas-it/pytest-console-scripts/blob/master/LICENSE)
+[![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/kvas-it/pytest-console-scripts/test.yml)](https://github.com/kvas-it/pytest-console-scripts/actions)
+[![codecov](https://codecov.io/gh/kvas-it/pytest-console-scripts/branch/master/graph/badge.svg?token=RfELxcqvpF)](https://codecov.io/gh/kvas-it/pytest-console-scripts)
+
+[![GitHub issues](https://img.shields.io/github/issues/kvas-it/pytest-console-scripts)](https://github.com/kvas-it/pytest-console-scripts/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/kvas-it/pytest-console-scripts)](https://github.com/kvas-it/pytest-console-scripts/pulls)
+[![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/kvas-it/pytest-console-scripts/latest)](https://github.com/kvas-it/pytest-console-scripts/commits/master)
+
 Pytest-console-scripts is a [pytest][1] plugin for running python scripts from
 within tests. It's quite similar to `subprocess.run()`, but it also has an
 in-process mode, where the scripts are executed by the interpreter that's
