@@ -463,3 +463,7 @@ def test_run_path(
     result = script_runner.run(console_script, check=True)
     assert result.stdout == 'foo\n'
     assert result.stderr == ''
+    console_script.chmod(0o777)
+    result = script_runner.run(console_script, check=True)
+    assert result.stdout == 'foo\n'
+    assert result.stderr == ''
