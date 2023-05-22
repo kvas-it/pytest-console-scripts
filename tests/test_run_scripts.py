@@ -454,3 +454,12 @@ def test_disable_universal_newlines(
     assert isinstance(result.stderr, bytes)
     assert result.stdout.strip() == b'foo'
     assert result.stderr == b''
+
+
+@pytest.mark.script_launch_mode('both')
+def test_run_path(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    result = script_runner.run(console_script, check=True)
+    assert result.stdout == 'foo\n'
+    assert result.stderr == ''
