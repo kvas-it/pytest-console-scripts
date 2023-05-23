@@ -1,6 +1,7 @@
 """Test running of scripts with various modes and options."""
 from __future__ import annotations
 
+import contextlib
 import importlib
 import io
 import os
@@ -8,7 +9,7 @@ import sys
 from pathlib import Path
 from subprocess import CalledProcessError
 from types import ModuleType
-from typing import Any
+from typing import Any, ContextManager
 from unittest import mock
 
 import pytest
@@ -92,9 +93,7 @@ def test_script(script_runner):
     # inner and outer script runners.
 
     result = script_runner.run(
-        'pytest',
-        str(test),
-        '--script-launch-mode=' + launch_mode,
+        ['pytest', test, f'--script-launch-mode={launch_mode}']
     )
     assert result.success
 
@@ -248,9 +247,7 @@ def test_fail(script_runner):
         """
     )
     result = script_runner.run(
-        'pytest',
-        str(test),
-        '--script-launch-mode=' + launch_mode,
+        ['pytest', test, f'--script-launch-mode={launch_mode}']
     )
     assert result.success != fail
     if fail:
@@ -306,7 +303,7 @@ def test_script(script_runner):
     script_runner.run(R'''{console_script}''', print_result=False)
         """
     )
-    result = script_runner.run('pytest', '-s', str(test))
+    result = script_runner.run(['pytest', '-s', test])
     assert result.success
     assert 'the answer is 42' not in result.stdout
     assert 'Running console script' not in result.stdout
@@ -327,7 +324,7 @@ def test_script(script_runner):
     script_runner.run(R'''{console_script}''')
         """
     )
-    result = script_runner.run('pytest', '-s', '--hide-run-results', str(test))
+    result = script_runner.run(['pytest', '-s', '--hide-run-results', test])
     assert result.success
     assert 'the answer is 42' not in result.stdout
     assert 'Running console script' not in result.stdout
@@ -411,9 +408,11 @@ import sys
 print(sys.argv[1:])
         """
     )
-    result = script_runner.run(console_script, 'A', 'B', check=True)
+    with pytest.warns(match=r".*multiple arguments."):
+        result = script_runner.run(console_script, 'A', 'B', check=True)
     assert result.stdout == "['A', 'B']\n"
-    result = script_runner.run([console_script, 'C'], 'D', check=True)
+    with pytest.warns(match=r".*multiple arguments."):
+        result = script_runner.run([console_script, 'C'], 'D', check=True)
     assert result.stdout == "['C', 'D']\n"
 
 
@@ -430,9 +429,14 @@ def test_check(
 def test_ignore_universal_newlines(
     console_script: Path, script_runner: ScriptRunner
 ) -> None:
-    result = script_runner.run(
-        str(console_script), check=True, universal_newlines=True
-    )
+    expectation: dict[str, ContextManager[Any]] = {
+        'inprocess': pytest.warns(match=r"Keyword argument .* was ignored"),
+        'subprocess': contextlib.nullcontext(),
+    }
+    with expectation[script_runner.launch_mode]:
+        result = script_runner.run(
+            str(console_script), check=True, universal_newlines=True
+        )
     assert result.stdout == 'foo\n'
     assert result.stderr == ''
 

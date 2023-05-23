@@ -137,6 +137,7 @@ def _handle_command_args(
     command: _Command,
     *args: _StrOrPath,
     shell: bool = False,
+    stacklevel: int = 1,
 ) -> Sequence[_StrOrPath]:
     """Return command arguments in a consistent list format.
 
@@ -146,7 +147,9 @@ def _handle_command_args(
         if args or not isinstance(command, (str, os.PathLike)):
             command = subprocess.list2cmdline(
                 str(arg)
-                for arg in _handle_command_args(command, *args, shell=False)
+                for arg in _handle_command_args(
+                    command, *args, shell=False, stacklevel=stacklevel + 1
+                )
             )
         command = shlex.split(str(command), posix=os.name == 'posix')
         args = ()
@@ -158,6 +161,7 @@ def _handle_command_args(
             '\nReplace `script_runner.run(a, b, c)` calls with'
             ' `script_runner.run([a, b, c])`',
             DeprecationWarning,
+            stacklevel=stacklevel + 1,
         )
         if not isinstance(command, (str, os.PathLike)):
             return [*command, *args]
@@ -263,6 +267,7 @@ class ScriptRunner:
             env=env,
             stdin=stdin,
             check=check,
+            _stacklevel=2,
             **options,
         )
 
@@ -326,14 +331,18 @@ class ScriptRunner:
         print_result: bool = True,
         stdin: io.IOBase | None = None,
         check: bool = False,
+        _stacklevel: int = 1,
         **options: Any,
     ) -> RunResult:
         for key in options:
             warnings.warn(
                 f'Keyword argument {key!r} was ignored.'
-                '\nConsider using subprocess mode or raising an issue.'
+                '\nConsider using subprocess mode or raising an issue.',
+                stacklevel=_stacklevel + 1,
             )
-        cmd_args = _handle_command_args(command, *arguments, shell=shell)
+        cmd_args = _handle_command_args(
+            command, *arguments, shell=shell, stacklevel=_stacklevel + 1
+        )
         script = cls._load_script(cmd_args[0], cwd=cwd, env=env)
         cmd_args = [str(cmd) for cmd in cmd_args]
         stdin_stream = stdin if stdin is not None else StreamMock()
@@ -396,20 +405,29 @@ class ScriptRunner:
         stdin: io.IOBase | None = None,
         check: bool = False,
         universal_newlines: bool = True,
+        _stacklevel: int = 1,
         **options: Any,
     ) -> RunResult:
         stdin_input: str | bytes | None = None
         if stdin is not None:
             stdin_input = stdin.read()
 
-        script_path = cls._locate_script(_handle_command_args(
-            command, *arguments, shell=shell)[0], cwd=cwd, env=env
+        script_path = cls._locate_script(
+            _handle_command_args(
+                command, *arguments, shell=shell, stacklevel=_stacklevel + 1
+            )[0],
+            cwd=cwd,
+            env=env,
         )
         if arguments:
-            command = _handle_command_args(command, *arguments, shell=shell)
+            command = _handle_command_args(
+                command, *arguments, shell=shell, stacklevel=_stacklevel + 1
+            )
 
         if _is_nonexecutable_python_file(script_path):
-            command = _handle_command_args(command, shell=shell)
+            command = _handle_command_args(
+                command, shell=shell, stacklevel=_stacklevel + 1
+            )
             command = [sys.executable or 'python', *command]
 
         cp = subprocess.run(
