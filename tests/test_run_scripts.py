@@ -465,3 +465,21 @@ def test_run_path(
     result = script_runner.run(console_script, check=True)
     assert result.stdout == 'foo\n'
     assert result.stderr == ''
+
+
+@pytest.mark.script_launch_mode('both')
+def test_run_script_codecs(
+    console_script: Path, script_runner: ScriptRunner
+) -> None:
+    """Check that non-UTF-8 scripts can load"""
+    console_script.write_text(
+        """\
+# -*- coding: cp437 -*-
+import sys  # Non UTF-8 characters -> ≡≡≡
+print('foo')
+        """,
+        encoding="cp437",
+    )
+    result = script_runner.run(console_script, check=True)
+    assert result.stdout == 'foo\n'
+    assert result.stderr == ''
