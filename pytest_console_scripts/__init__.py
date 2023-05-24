@@ -313,9 +313,10 @@ class ScriptRunner:
         script_path = cls._locate_script(command, cwd=cwd, env=env)
 
         def exec_script() -> int:
-            with open(script_path, 'rt', encoding='utf-8') as script:
-                compiled = compile(script.read(), str(script), 'exec', flags=0)
-                exec(compiled, {'__name__': '__main__'})
+            compiled = compile(
+                script_path.read_bytes(), str(script_path), 'exec', flags=0
+            )
+            exec(compiled, {'__name__': '__main__'})
             return 0
 
         return exec_script
