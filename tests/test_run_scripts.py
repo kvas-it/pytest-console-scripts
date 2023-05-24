@@ -229,21 +229,30 @@ logging.info('shown')
 
 
 @pytest.mark.parametrize('fail', [True, False])
+@pytest.mark.parametrize('check', [True, False])
 def test_print_stdio_on_error(
     console_script: Path,
     script_runner: ScriptRunner,
     tmp_path: Path,
     fail: bool,
+    check: bool,
     launch_mode: str,
 ) -> None:
     """Output of the script is printed when the test fails."""
     console_script.write_text('print("12345")\nraise Exception("54321")')
-    test = tmp_path / f'test_{fail}_{launch_mode}.py'
+    test = tmp_path / f'test_{fail}_{check}_{launch_mode}.py'
+    command = [str(console_script), 'arg']
     test.write_text(
         f"""
+import subprocess
+
 def test_fail(script_runner):
-    ret = script_runner.run(R'''{console_script}''', 'arg')
-    assert ret.success is {fail}
+    try:
+        ret = script_runner.run({command}, check={check})
+    except subprocess.CalledProcessError as exc:
+        assert (exc.returncode == 0) is {fail}
+    else:
+        assert ret.success is {fail}
         """
     )
     result = script_runner.run(
@@ -251,7 +260,7 @@ def test_fail(script_runner):
     )
     assert result.success != fail
     if fail:
-        assert (f'# Running console script: {console_script} arg\n'
+        assert (f'# Running console script: {command}\n'
                 in result.stdout)
         assert '# Script return code: 1\n' in result.stdout
         assert '# Script stdout:\n12345\n' in result.stdout

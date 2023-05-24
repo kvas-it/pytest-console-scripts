@@ -430,18 +430,22 @@ class ScriptRunner:
             )
             command = [sys.executable or 'python', *command]
 
-        cp = subprocess.run(
-            command,
-            input=stdin_input,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            shell=shell,
-            cwd=cwd,
-            env=env,
-            check=check,
-            universal_newlines=universal_newlines,
-            **options,
-        )
+        try:
+            cp = subprocess.run(
+                command,
+                input=stdin_input,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                shell=shell,
+                cwd=cwd,
+                env=env,
+                check=check,
+                universal_newlines=universal_newlines,
+                **options,
+            )
+        except subprocess.CalledProcessError as exc:
+            RunResult(exc.returncode, exc.stdout, exc.stderr, print_result)
+            raise
         return RunResult(cp.returncode, cp.stdout, cp.stderr, print_result)
 
 
