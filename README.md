@@ -8,7 +8,7 @@ pytest-console-scripts
 
 [![GitHub issues](https://img.shields.io/github/issues/kvas-it/pytest-console-scripts)](https://github.com/kvas-it/pytest-console-scripts/issues)
 [![GitHub pull requests](https://img.shields.io/github/issues-pr/kvas-it/pytest-console-scripts)](https://github.com/kvas-it/pytest-console-scripts/pulls)
-[![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/kvas-it/pytest-console-scripts/latest)](https://github.com/kvas-it/pytest-console-scripts/commits/master)
+[![GitHub commits since latest release (by date)](https://img.shields.io/github/commits-since/kvas-it/pytest-console-scripts/latest)](https://github.com/kvas-it/pytest-console-scripts/blob/master/CHANGELOG.md)
 
 Pytest-console-scripts is a [pytest][1] plugin for running python scripts from
 within tests. It's quite similar to `subprocess.run()`, but it also has an
@@ -205,7 +205,7 @@ If you want to run the tests quickly during development, the additional
 installation step would add a significant overhead and slow you down.
 
 There's a way around this: install your package in [development mode][10] using
-`python setup.py develop`. If you use [tox][9], you can take one of its
+`pip install -e .`. If you use [tox][9], you can take one of its
 existing virtualenvs (they live in `.tox/`). Otherwise create a
 [virtualenv][11] just for development, activate it and run `python setup.py
 develop` to install your package in development mode. You will need to
@@ -244,7 +244,7 @@ with [@hackebrot][5]'s [Cookiecutter-pytest-plugin][6] template.
 [7]: https://github.com/kvas-it/pytest-console-scripts/issues
 [8]: http://opensource.org/licenses/MIT
 [9]: https://tox.readthedocs.org/en/latest/
-[10]: https://setuptools.readthedocs.io/en/latest/setuptools.html#development-mode
+[10]: https://setuptools.pypa.io/en/latest/userguide/development_mode.html
 [11]: https://docs.python.org/3/library/venv.html
 [12]: https://docs.pytest.org/en/stable/capture.html
 [13]: https://docs.pytest.org/en/stable/capture.html#setting-capturing-methods-or-disabling-capturing
