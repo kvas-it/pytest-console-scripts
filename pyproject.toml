@@ -46,3 +46,6 @@ Forum = 'https://github.com/kvas-it/pytest-console-scripts/discussions'
 
 [project.entry-points.'pytest11']
 console-scripts = 'pytest_console_scripts'
+
+[tool.flit.sdist]
+include = ['*.md', 'MANIFEST.in', 'tox.ini', 'tests/']
