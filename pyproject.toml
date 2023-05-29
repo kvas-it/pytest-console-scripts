@@ -1,0 +1,48 @@
+[build-system]
+requires = ['flit_scm']
+build-backend = 'flit_scm:buildapi'
+
+[project]
+name = 'pytest-console-scripts'
+authors = [{ name = 'Vasily Kuznetsov', email = 'kvas.it@gmail.com' }]
+maintainers = [
+    { name = 'Vasily Kuznetsov', email = 'kvas.it@gmail.com' },
+    { name = 'Kyle Benesch', email = '4b796c65+github@gmail.com' },
+]
+readme = 'README.md'
+license = { file = 'LICENSE' }
+classifiers = [
+    'Development Status :: 4 - Beta',
+    'Framework :: Pytest',
+    'Intended Audience :: Developers',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: OS Independent',
+    'Programming Language :: Python',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.8',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: Implementation :: CPython',
+    'Programming Language :: Python :: Implementation :: PyPy',
+    'Topic :: Software Development :: Testing',
+    'Typing :: Typed',
+]
+requires-python = '>=3.8'
+dynamic = ['version', 'description']
+dependencies = [
+    'pytest >=4.0.0',
+    "importlib_metadata >=3.6; python_version < '3.10'",
+]
+
+[tool.setuptools_scm]
+write_to = 'pytest_console_scripts/_version.py'
+
+[project.urls]
+Source = 'https://github.com/kvas-it/pytest-console-scripts'
+Changelog = 'https://github.com/kvas-it/pytest-console-scripts/blob/master/CHANGELOG.md'
+Issues = 'https://github.com/kvas-it/pytest-console-scripts/issues'
+Forum = 'https://github.com/kvas-it/pytest-console-scripts/discussions'
+
+[project.entry-points.'pytest11']
+console-scripts = 'pytest_console_scripts'

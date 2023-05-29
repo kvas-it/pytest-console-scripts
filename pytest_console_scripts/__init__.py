@@ -1,3 +1,4 @@
+"""Pytest plugin for testing console scripts."""
 from __future__ import annotations
 
 import contextlib
@@ -16,10 +17,14 @@ from unittest import mock
 
 import pytest
 
+from . import _version
+
 if sys.version_info < (3, 10):
     import importlib_metadata
 else:
     import importlib.metadata as importlib_metadata
+
+__version__ = _version.version
 
 _StrOrPath = Union[str, os.PathLike]
 """A command line argument type as a str or path."""
