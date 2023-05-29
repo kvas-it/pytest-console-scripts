@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.1] - 2023-05-29
+
 ### Removed
 - Dropped support for Python 3.7
   [#72](https://github.com/kvas-it/pytest-console-scripts/pull/72)
