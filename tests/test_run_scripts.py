@@ -93,7 +93,12 @@ def test_script(script_runner):
     # inner and outer script runners.
 
     result = script_runner.run(
-        ['pytest', test, f'--script-launch-mode={launch_mode}']
+        [
+            'pytest',
+            f'--rootdir={tmp_path}',
+            test,
+            f'--script-launch-mode={launch_mode}'
+        ]
     )
     assert result.success
 
@@ -256,7 +261,12 @@ def test_fail(script_runner):
         """
     )
     result = script_runner.run(
-        ['pytest', test, f'--script-launch-mode={launch_mode}']
+        [
+            'pytest',
+            f'--rootdir={tmp_path}',
+            test,
+            f'--script-launch-mode={launch_mode}'
+        ]
     )
     assert result.success != fail
     if fail:
@@ -312,7 +322,7 @@ def test_script(script_runner):
     script_runner.run(R'''{console_script}''', print_result=False)
         """
     )
-    result = script_runner.run(['pytest', '-s', test])
+    result = script_runner.run(['pytest', '-s', f'--rootdir={tmp_path}', test])
     assert result.success
     assert 'the answer is 42' not in result.stdout
     assert 'Running console script' not in result.stdout
@@ -333,7 +343,9 @@ def test_script(script_runner):
     script_runner.run(R'''{console_script}''')
         """
     )
-    result = script_runner.run(['pytest', '-s', '--hide-run-results', test])
+    result = script_runner.run(
+        ['pytest', '-s', '--hide-run-results', f'--rootdir={tmp_path}', test]
+    )
     assert result.success
     assert 'the answer is 42' not in result.stdout
     assert 'Running console script' not in result.stdout
