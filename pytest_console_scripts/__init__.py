@@ -12,7 +12,7 @@ import sys
 import traceback
 import warnings
 from pathlib import Path
-from typing import Any, Callable, Iterator, Sequence, Union
+from typing import Any, Callable, Final, Iterator, Sequence, Union
 from unittest import mock
 
 import pytest
@@ -234,9 +234,9 @@ class ScriptRunner:
         print_result: bool = True
     ) -> None:
         assert launch_mode in {'inprocess', 'subprocess'}
-        self.launch_mode = launch_mode
-        self.print_result = print_result
-        self.rootdir = rootdir
+        self.launch_mode: Final = launch_mode
+        self.print_result: Final = print_result
+        self.rootdir: Final = rootdir
 
     def __repr__(self) -> str:
         return f'<ScriptRunner {self.launch_mode}>'
@@ -455,19 +455,17 @@ class ScriptRunner:
         return RunResult(cp.returncode, cp.stdout, cp.stderr, print_result)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def script_launch_mode(request: pytest.FixtureRequest) -> str:
     return str(request.param)
 
 
-@pytest.fixture
-def script_cwd(tmp_path: Path) -> Path:
-    work_dir = tmp_path / 'script-cwd'
-    work_dir.mkdir()
-    return work_dir
+@pytest.fixture(scope="session")
+def script_cwd(tmp_path_factory: pytest.TempPathFactory) -> Path:
+    return tmp_path_factory.mktemp('script-cwd')
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def script_runner(
     request: pytest.FixtureRequest, script_cwd: Path, script_launch_mode: str
 ) -> ScriptRunner:
