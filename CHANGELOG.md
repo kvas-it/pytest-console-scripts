@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- `script_runner` is now a session-scoped fixture.
+  [#89](https://github.com/kvas-it/pytest-console-scripts/issues/89)
+
 ## [1.4.1] - 2023-05-29
 
 ### Removed
