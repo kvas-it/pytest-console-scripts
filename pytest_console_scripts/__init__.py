@@ -111,10 +111,16 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     mode = mark_mode or option_mode or config_mode or 'inprocess'
 
     if mode in {'inprocess', 'subprocess'}:
-        metafunc.parametrize('script_launch_mode', [mode], indirect=True)
+        metafunc.parametrize(
+            'script_launch_mode', [mode], indirect=True, scope="session"
+        )
     elif mode == 'both':
-        metafunc.parametrize('script_launch_mode', ['inprocess', 'subprocess'],
-                             indirect=True)
+        metafunc.parametrize(
+            'script_launch_mode',
+            ['inprocess', 'subprocess'],
+            indirect=True,
+            scope="session",
+        )
     else:
         raise ValueError(f'Invalid script launch mode: {mode}')
 
