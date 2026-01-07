@@ -126,3 +126,38 @@ def test_help_message(testdir: pytest.Testdir) -> None:
         '*--script-launch-mode=*',
         '*--hide-run-results*',
     ])
+
+
+def test_script_runner_factory(script_runner_factory, script_cwd) -> None:
+    runner = script_runner_factory.make_runner('inprocess')
+    assert runner.launch_mode == 'inprocess'
+    assert runner.rootdir == script_cwd
+
+
+def test_script_runner_factory_scope(run_test: RunTest) -> None:
+    run_test(
+        """
+import pytest
+
+_heavy_create_count = 0
+
+@pytest.fixture(autouse=True, scope="session")
+def heavy_fixture(script_runner_factory):
+    global _heavy_create_count
+    _heavy_create_count += 1
+    return _heavy_create_count
+
+@pytest.mark.script_launch_mode('inprocess')
+def test_inprocess(heavy_fixture):
+    assert heavy_fixture == 1
+
+@pytest.mark.script_launch_mode('subprocess')
+def test_subprocess(heavy_fixture):
+    assert heavy_fixture == 1
+
+@pytest.mark.script_launch_mode('both')
+def test_both(script_runner, heavy_fixture, accumulator=set()):
+    assert heavy_fixture == 1
+        """,
+        passed=4,
+    )

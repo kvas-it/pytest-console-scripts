@@ -100,6 +100,23 @@ def test_foo_bar(script_runner: ScriptRunner) -> None:
     ...
 ```
 
+Session-scoped fixtures and script_runner_factory
+-------------------------------------------------
+
+The `script_runner` fixture is session-scoped, but when tests run in multiple
+launch modes pytest may re-create it (and any fixtures depending on it) for
+each launch mode. Depending on test ordering this might effectively make it
+function-scoped. If you need a session-scoped fixture that does not get
+re-created, use `script_runner_factory` and build a runner with an explicit
+launch mode:
+
+```py
+@pytest.fixture(scope="session")
+def heavy_setup(script_runner_factory):
+    runner = script_runner_factory.make_runner("inprocess")
+    # use custom runner to do heavy setup here
+```
+
 Configuring script execution mode
 ---------------------------------
 

@@ -461,6 +461,18 @@ class ScriptRunner:
         return RunResult(cp.returncode, cp.stdout, cp.stderr, print_result)
 
 
+class ScriptRunnerFactory:
+    """Factory for creating ScriptRunner instances."""
+
+    def __init__(self, script_cwd: Path, default_print_result: bool) -> None:
+        self._script_cwd = script_cwd
+        self._default_print_result = default_print_result
+
+    def make_runner(self, launch_mode: str) -> ScriptRunner:
+        print_result = self._default_print_result
+        return ScriptRunner(launch_mode, self._script_cwd, print_result)
+
+
 @pytest.fixture(scope="session")
 def script_launch_mode(request: pytest.FixtureRequest) -> str:
     return str(request.param)
@@ -472,8 +484,15 @@ def script_cwd(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 
 @pytest.fixture(scope="session")
+def script_runner_factory(
+    script_cwd: Path, pytestconfig: pytest.Config
+) -> ScriptRunnerFactory:
+    default_print_result = not pytestconfig.getoption('--hide-run-results')
+    return ScriptRunnerFactory(script_cwd, default_print_result)
+
+
+@pytest.fixture(scope="session")
 def script_runner(
-    request: pytest.FixtureRequest, script_cwd: Path, script_launch_mode: str
+    script_launch_mode: str, script_runner_factory: ScriptRunnerFactory
 ) -> ScriptRunner:
-    print_result = not request.config.getoption('--hide-run-results')
-    return ScriptRunner(script_launch_mode, script_cwd, print_result)
+    return script_runner_factory.make_runner(script_launch_mode)
